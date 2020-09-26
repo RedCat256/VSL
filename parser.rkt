@@ -68,23 +68,24 @@
     (define/public (unary)
       (define type (empty-token-type cur))
       (case type
-        [(+) (next) (parse-prec 120)]
-        [(-) (next) (- (parse-prec 120))]
-        [(!) (next) (not (parse-prec 120))]
-        [(number) (next) (token-value prev)]
+        [(+ - !) (next) (expr:unary prev (parse-prec 120))]
+        [(number id string) (next) prev]
         [else (parse-error (format "Invalid unary operator '~a'" type))]))
 
     (define/public (binary left)
       (define type (empty-token-type prev))
       (case type
-        [(+) (+ left (parse-prec 100))]
-        [(-) (- left (parse-prec 100))]
-        [(*) (* left (parse-prec 110))]
-        [(/) (/ left (parse-prec 110))]
+        [(= or and == != < > <= >= + - * /)
+         (expr:binary prev left (parse-prec (get-prec prev)))]
         [else (parse-error (format "Invalid binary operator '~a'" type))]))
        
     (define/public (get-prec tok)
       (case (empty-token-type tok)
+        [(=) 50]
+        [(or) 60]
+        [(and) 70]
+        [(== !=) 80]
+        [(< > <= >=) 90]
         [(+ -) 100]
         [(* /) 110]
         [else 0]))

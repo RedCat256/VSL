@@ -104,7 +104,7 @@
                 (next)
                 (cond [(_match #\=) (empty-token (string->symbol (_text)) line)]
                       [(empty-token (char-to-symbol prev) line)])]
-                [(/) (next)
-                     (cond [(_match #\/) (skip-comment) (tokenize)]
-                           [else (empty-token '/ line)])]
-                [else (raise (lex-exn (format "Invalid character '~a'" c) (current-continuation-marks)))])]))))
+               [(/) (next)
+                    (cond [(_match #\/) (skip-comment) (tokenize)]
+                          [else (empty-token '/ line)])]
+               [else (raise (lex-exn (format "Invalid character '~a'" c) (current-continuation-marks)))])]))))
