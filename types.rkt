@@ -1,7 +1,8 @@
 #lang racket
 
 (provide nil nil? empty-token token lex-exn while
-         empty-token-type lex-exn?)
+         empty-token-type lex-exn? parse-exn parse-exn?
+         token-value)
 
 (define nil%
   (class object%
@@ -15,6 +16,7 @@
 (struct token empty-token [value] #:transparent)
 
 (struct lex-exn exn:fail:user ())
+(struct parse-exn exn:fail:user ())
 
 (define-syntax while
   (syntax-rules ()

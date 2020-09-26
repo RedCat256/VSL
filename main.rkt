@@ -2,6 +2,7 @@
 
 (require "types.rkt")
 (require "scanner.rkt")
+(require "parser.rkt")
 ;(require "readline.rkt") ; for unix
 
 (define (readline prompt)
@@ -26,18 +27,23 @@
 (define (repl-loop)
   (let ((line (readline "user> ")))
     (with-handlers
-        ([lex-exn? (lambda (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop))])
+        ([lex-exn? (lambda (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop))]
+         [parse-exn? (lambda (exn) (eprintf "ParseError: ~a~n" (exn-message exn)) (repl-loop))])
       (cond [(eq? eof line) (newline)]
-            [line (println (send (new scanner% [chars line]) get-tokens))
+            [line (println (send (make-parser line) expr))
                   (repl-loop)]
             [else (newline)]))))
 
 (define (banner)
   (printf "[lox]~n"))
 
+(define (make-parser str)
+  (let ([sc (new scanner% [chars str])])
+    (new parser% [tokens (send sc get-tokens)])))
+
 (define (main)
   (if file
-      (println (send (new scanner% [chars (read-file file)]) get-tokens))
+      (send (make-parser (read-file file)) expr)
       (begin (banner)
              (repl-loop))))
 

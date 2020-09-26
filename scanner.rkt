@@ -34,9 +34,7 @@
         (set! line (add1 line)))
       (set! pos (add1 pos))
       (set! prev c)
-      (if (>= pos (string-length str))
-          (set! c eof)
-          (set! c (string-ref str pos))))
+      (set! c (peek)))
 
     (define/public (_match ch)
       (and (eqv? ch c) (next)))
@@ -102,11 +100,11 @@
             [else
              (case (char-to-symbol c)
                [(+ - * |.| |,| |;| |(| |)| |{| |}|) (next) (empty-token (char-to-symbol prev) line)]
-               [(= < > !) (next)
-                          (if (_match #\=)
-                              (empty-token (string->symbol (_text)) line)
-                              (empty-token (char-to-symbol prev) line))]
-               [(/) (next)
-                    (cond [(_match #\/) (skip-comment) (tokenize)]
-                          [else (empty-token '/ line)])]
-               [else (raise (lex-exn (format "Invalid character '~a'" c) (current-continuation-marks)))])]))))
+               [(= < > !)
+                (next)
+                (cond [(_match #\=) (empty-token (string->symbol (_text)) line)]
+                      [(empty-token (char-to-symbol prev) line)])]
+                [(/) (next)
+                     (cond [(_match #\/) (skip-comment) (tokenize)]
+                           [else (empty-token '/ line)])]
+                [else (raise (lex-exn (format "Invalid character '~a'" c) (current-continuation-marks)))])]))))
