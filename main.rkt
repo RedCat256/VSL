@@ -2,7 +2,11 @@
 
 (require "types.rkt")
 (require "scanner.rkt")
-(require "readline.rkt")
+;(require "readline.rkt") ; for unix
+
+(define (readline prompt)
+  (display prompt)
+  (read-line))
 
 (define args (current-command-line-arguments))
 (define file #f)
@@ -21,12 +25,13 @@
 
 (define (repl-loop)
   (let ((line (readline "user> ")))
-    (cond [line (println (send (new scanner% [chars line]) get-tokens))
+    (cond [(eq? eof line) (newline)]
+          [line (println (send (new scanner% [chars line]) get-tokens))
                 (repl-loop)]
           [else (newline)])))
 
 (define (banner)
-  (printf "[MAL]~n"))
+  (printf "[lox]~n"))
 
 (define (main)
   (if file

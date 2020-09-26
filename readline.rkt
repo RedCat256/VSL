@@ -5,7 +5,7 @@
 (require (prefix-in readline: readline/readline))
 
 (define history-file-loaded #f)
-(define HISTORY-FILE (format "~a/a.history" (find-system-path 'home-dir)))
+(define HISTORY-FILE (format "~a/lox.history" (find-system-path 'home-dir)))
 
 (define (load-history path)
   (with-handlers ([exn:fail? (lambda (e) #t)]) 
@@ -30,5 +30,3 @@
                      (lambda () (printf "~a~n" line))
                      #:exists 'append))
                  line)))))
-
-		
