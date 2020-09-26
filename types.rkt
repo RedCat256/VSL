@@ -1,7 +1,7 @@
 #lang racket
 
 (provide nil nil? empty-token token lex-exn while
-         empty-token-type)
+         empty-token-type lex-exn?)
 
 (define nil%
   (class object%

@@ -58,20 +58,20 @@
     (define/public (make-string-token)
       (define c (peek))
       (while (not (or (eqv? c eof) (eqv? c #\")))
-             (next)
-             (set! c (peek)))
+        (next)
+        (set! c (peek)))
       (next) ; skip right "
       (token 'string line (_text)))
 
     (define/public (make-number-token)
       (define c (peek))
       (while (numeric?)
-             (next))
+        (next))
       (token 'number line (string->number (_text))))
 
     (define/public (make-id-token)
       (while (name-char?)
-             (next))
+        (next))
       (let ([sym (string->symbol (_text))])
         (if (hash-ref keywords sym #f)
             (empty-token sym line)
@@ -79,14 +79,14 @@
 
     (define/public (skip-white)
       (while (whitespace?)
-             (next)))
+        (next)))
 
     (define/public (get-tokens)
       (let ([tokens '()]
             [tok (tokenize)])
         (while (not (eq? (empty-token-type tok) 'eof))
-               (set! tokens (cons tok tokens))
-               (set! tok (tokenize)))
+          (set! tokens (cons tok tokens))
+          (set! tok (tokenize)))
         (set! tokens (cons tok tokens))
         (reverse tokens)))
 
@@ -114,8 +114,8 @@
                   (if (_match #\/)
                       (begin
                         (while (not (or (eqv? c eof) (eqv? c #\newline)))
-                               (next)
-                               (set! c (peek)))
+                          (next)
+                          (set! c (peek)))
                         (tokenize))
                       (empty-token '/ line)))]
                [else (raise (lex-exn (format "Invalid character '~a'" c) (current-continuation-marks)))])]))))

@@ -19,16 +19,18 @@
     (lambda ()
       (let ([line (read-line)])
         (while (not (eq? line eof))
-               (set! str (string-append str line "\n"))
-               (set! line (read-line)))
+          (set! str (string-append str line "\n"))
+          (set! line (read-line)))
         str))))
 
 (define (repl-loop)
   (let ((line (readline "user> ")))
-    (cond [(eq? eof line) (newline)]
-          [line (println (send (new scanner% [chars line]) get-tokens))
-                (repl-loop)]
-          [else (newline)])))
+    (with-handlers
+        ([lex-exn? (lambda (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop))])
+      (cond [(eq? eof line) (newline)]
+            [line (println (send (new scanner% [chars line]) get-tokens))
+                  (repl-loop)]
+            [else (newline)]))))
 
 (define (banner)
   (printf "[lox]~n"))
