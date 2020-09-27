@@ -31,7 +31,9 @@
         ([lex-exn? (lambda (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop))]
          [parse-exn? (lambda (exn) (eprintf "ParseError: ~a~n" (exn-message exn)) (repl-loop))])
       (cond [(eq? eof line) (newline)]
-            [line (println (interpret line))
+            [line (let ([val (interpret line)])
+                    (unless (void? val)
+                      (println val)))
                   (repl-loop)]
             [else (newline)]))))
 
@@ -43,7 +45,7 @@
     (new parser% [tokens (send sc get-tokens)])))
 
 (define (interpret str)
-  (send (new interpreter%) _eval (send (make-parser str) expr)))
+  (send (new interpreter%) _eval (send (make-parser str) statements)))
 
 (define (main)
   (if file

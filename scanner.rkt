@@ -58,7 +58,7 @@
       (while (not (or (eqv? c eof) (eqv? c #\")))
         (next))
       (next) ; skip right "
-      (token 'string line (_text)))
+      (token 'string line (substring str (add1 start) (sub1 pos))))
 
     (define/public (make-number-token)
       (while (numeric?)

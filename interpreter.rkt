@@ -35,11 +35,22 @@
         [(and) (and (_eval left) (_eval right))]
         [(or) (or (_eval left) (_eval right))]
         [(=) nil]))
-      
+
+    (define/public (eval-statements a)
+      (let ([r nil])
+        (for ([stat (stat:statements-slist a)])
+          (set! r(_eval stat)))
+        r))
+
+    (define/public (eval-print a)
+      (displayln (_eval (stat:print-expr a))))
 
     (define/public (_eval a)
       (cond [(expr:unary? a) (eval-unary a)]
             [(expr:binary? a) (eval-binary a)]
+            [(stat:statements? a) (eval-statements a)]
+            [(stat:print? a) (eval-print a)]
+            [(stat:expr? a) (_eval (stat:expr-expr a))]
             [else (case (empty-token-type a)
                     [(number string) (eval-literal a)]
                     [(true) #t]

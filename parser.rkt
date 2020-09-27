@@ -12,7 +12,7 @@
     (define toks tokens)
     (define pos 0)
     (define cur (peek))
-    (define prev #f)
+    (define prev cur)
     
     (define/public (peek)
       (if (>= pos (length toks))
@@ -57,6 +57,29 @@
            (case (empty-token-type cur)
              [(class fun var for if while print return) (return nil)])
            (next)))))
+
+    (define/public (statements)
+      (let ([sts '()]
+            [line (empty-token-line prev)])
+        (while (not-at-end?)
+          (set! sts (cons (statement) sts)))
+        (stat:statements (empty-token 'sts line) (reverse sts))))
+
+    (define/public (statement)
+      (cond [(_match 'print) (print-statement)]
+            [else (expr-statement)]))
+
+    (define/public (print-statement)
+      (let ([tok prev]
+            [e (expr)])
+        (consume '|;| "Expect ';' after value.")
+        (stat:print tok e)))
+
+    (define/public (expr-statement)
+      (let ([tok cur]
+            [e (expr)])
+        (consume '|;| "Expect ';' after expression.")
+        (stat:expr tok e)))
 
     (define/public (parse-prec prec)
       (define left (unary))
