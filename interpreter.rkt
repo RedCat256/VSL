@@ -27,6 +27,9 @@
         [(-) (- (_eval (expr:unary-expr a)))]
         [(!) (not (_eval (expr:unary-expr a)))]))
 
+    (define/public (check p val msg)
+      (if (p val) val (runtime-error msg)))
+
     (define/public (eval-binary a)
       (define tok (node-token a))
       (define left (expr:binary-left a))
@@ -34,7 +37,10 @@
       (define type (empty-token-type tok))
       (case type
         [(+ - * / < <= > >= ==)
-         ((symbol-function type) (_eval left) (_eval right))]
+         (let ([msg (format "Operands of '~a' must be number." type)])
+           ((symbol-function type)
+            (check number? (_eval left) msg)
+            (check number? (_eval right) msg)))]
         [(and) (and (_eval left) (_eval right))]
         [(or) (or (_eval left) (_eval right))]
         [(=) (eval-assign a)]))
@@ -48,7 +54,7 @@
         value))
 
     (define/public (eval-statements a)
-      (let ([r nil])
+      (let ([r (void)])
         (for ([stat (stat:statements-slist a)])
           (set! r(_eval stat)))
         r))
@@ -70,11 +76,9 @@
       (define ne (new env% [outer env]))
       (define previous env)
       (set! env ne)
-      (let ([r nil])
-        (for ([stat (stat:block-slist a)])
-          (set! r (_eval stat)))
-        (set! env previous)
-        r))
+      (for ([stat (stat:block-slist a)])
+        (_eval stat))
+      (set! env previous))
 
     (define/public (_eval a)
       (cond [(expr:unary? a) (eval-unary a)]
@@ -90,5 +94,5 @@
                     [(false) #f]
                     [(nil) nil]
                     [(id) (eval-id a)]
-                    [else nil])]))))
+                    [else (void)])]))))
     
