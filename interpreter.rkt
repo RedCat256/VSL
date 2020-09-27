@@ -30,6 +30,10 @@
     (define/public (check p val msg)
       (if (p val) val (runtime-error msg)))
 
+    (define/public (divide a b)
+      (cond [(zero? b) ((if (< a 0) - +) +inf.0)]
+            [else (/ a b)]))
+
     (define/public (eval-binary a)
       (define tok (node-token a))
       (define left (expr:binary-left a))
@@ -37,10 +41,11 @@
       (define type (empty-token-type tok))
       (case type
         [(+ - * / < <= > >= == !=)
-         (let ([msg (format "Operands of '~a' must be number." type)])
-           ((symbol-function type)
-            (check number? (_eval left) msg)
-            (check number? (_eval right) msg)))]
+         (let* ([msg (format "Operands of '~a' must be number." type)]
+                [lval (check number? (_eval left) msg)]
+                [rval (check number? (_eval right) msg)])
+           (cond [(eq? type '/) (divide lval rval)]
+                 [else ((symbol-function type) lval rval)]))]
         [(and) (and (_eval left) (_eval right))]
         [(or) (or (_eval left) (_eval right))]
         [(=) (eval-assign a)]))
@@ -101,9 +106,11 @@
       (define ne (new env% [outer env]))
       (define previous env)
       (set! env ne)
-      (for ([stat (stat:block-slist a)])
-        (_eval stat))
-      (set! env previous))
+      (with-handlers
+          ([runtime-exn? (λ (e) (eprintf "RuntimeError: ~a~n" (exn-message e)) (set! env previous))])
+        (for ([stat (stat:block-slist a)])
+          (_eval stat))
+        (set! env previous)))
 
     (define/public (eval-if a)
       (let ([condition (stat:if-condition a)]
