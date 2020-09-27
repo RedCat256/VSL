@@ -50,7 +50,7 @@
     (define/public (synchronize)
       (next)
       (call/cc
-       (lambda (return)
+       (λ (return)
          (while (not-at-end?)
            (when (eq? (empty-token-type prev) '|;|)
              (return nil))
@@ -69,7 +69,8 @@
       (define type (empty-token-type cur))
       (case type
         [(+ - !) (next) (expr:unary prev (parse-prec 120))]
-        [(number id string) (next) prev]
+        [(number id string true false nil) (next) prev]
+        [(|(|) (next) (begin0 (expr) (consume '|)| "Expect ')' for grouping"))]
         [else (parse-error (format "Invalid unary operator '~a'" type))]))
 
     (define/public (binary left)

@@ -12,9 +12,7 @@
 
     (define/public (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
-        (if p
-            (second p)
-            #f)))
+        (if p (second p) #f)))
 
     (define/public (eval-literal a)
       (token-value a))
@@ -43,5 +41,9 @@
       (cond [(expr:unary? a) (eval-unary a)]
             [(expr:binary? a) (eval-binary a)]
             [else (case (empty-token-type a)
-                    [(number string) (eval-literal a)])]))))
+                    [(number string) (eval-literal a)]
+                    [(true) #t]
+                    [(false) #f]
+                    [(nil) nil]
+                    [else nil])]))))
     
