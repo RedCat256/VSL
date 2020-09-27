@@ -49,9 +49,17 @@
 
 (define (make-error exn)
   (λ (msg)
-    (raise (parse-exn msg (current-continuation-marks)))))
+    (raise (exn msg (current-continuation-marks)))))
 
 (define-values (lex-error parse-error runtime-error)
   ((λ (fn)
      (values (fn lex-exn) (fn parse-exn) (fn runtime-exn))) make-error))
-   
+
+(define (user-exn-catched? exn)
+  (or (lex-exn? exn) (parse-exn? exn) (runtime-exn? exn)))
+
+(define (print-user-error exn)
+  (define msg (exn-message exn))
+  (cond [(lex-exn? exn) (eprintf "LexError: ~a~n" msg)]
+        [(parse-exn? exn) (eprintf "ParseError: ~a~n" msg)]
+        [(runtime-exn? exn) (eprintf "RuntimeError: ~a~n" msg)]))

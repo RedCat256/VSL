@@ -102,7 +102,7 @@
       (define previous env)
       (set! env ne)
       (with-handlers
-          ([runtime-exn? (λ (e) (eprintf "RuntimeError: ~a~n" (exn-message e)) (set! env previous))])
+          ([user-exn-catched? (λ (e) (print-user-error e) (set! env previous))])
         (for ([stat (stat:block-slist a)])
           (_eval stat))
         (set! env previous)))
@@ -136,8 +136,7 @@
       (let ([name (stat:fun-name a)]
             [pars (stat:fun-parameters a)]
             [body (stat:fun-body a)])
-        (send env defvar name (function name pars body env))
-        (set! env (new env% [outer env]))))
+        (send env defvar name (function name pars body (new env% [outer env])))))
 
     (define/private (eval-return a)
       (let ([val (_eval (stat:return-expr a))])

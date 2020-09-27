@@ -28,9 +28,7 @@
 (define (repl-loop itr)
   (let ([line (readline "user> ")])
     (with-handlers
-        ([lex-exn? (λ (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop itr))]
-         [parse-exn? (λ (exn) (eprintf "ParseError: ~a~n" (exn-message exn)) (repl-loop itr))]
-         [runtime-exn? (λ (exn) (eprintf "RuntimeError: ~a~n" (exn-message exn)) (repl-loop itr))])
+        ([user-exn-catched? (λ (e) (print-user-error e) (repl-loop itr))])
       (cond [(eq? eof line) (newline)]
             [line (let ([val (interpret itr line)])
                     (unless (void? val)
