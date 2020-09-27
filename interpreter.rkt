@@ -80,6 +80,31 @@
         (_eval stat))
       (set! env previous))
 
+    (define/public (eval-if a)
+      (let ([condition (stat:if-condition a)]
+            [if-arm (stat:if-if-arm a)]
+            [then-arm (stat:if-then-arm a)])
+        (if (_eval condition)
+            (_eval if-arm)
+            (when then-arm
+              (_eval then-arm)))))
+
+    (define/public (eval-while a)
+      (let ([condition (stat:while-condition a)]
+            [body (stat:while-body a)])
+        (while (_eval condition)
+          (_eval body))))
+
+    (define/public (eval-for a)
+      (let ([init (stat:for-init a)]
+            [condition (stat:for-condition a)]
+            [step (stat:for-step a)]
+            [body (stat:for-body a)])
+        (when init (_eval init))
+        (while (_eval condition)
+          (_eval body)
+          (_eval step))))
+
     (define/public (_eval a)
       (cond [(expr:unary? a) (eval-unary a)]
             [(expr:binary? a) (eval-binary a)]
@@ -88,6 +113,9 @@
             [(stat:expr? a) (_eval (stat:expr-expr a))]
             [(stat:var? a) (eval-varDecl a)]
             [(stat:block? a) (eval-block a)]
+            [(stat:if? a) (eval-if a)]
+            [(stat:while? a) (eval-while a)]
+            [(stat:for? a) (eval-for a)]
             [else (case (empty-token-type a)
                     [(number string) (eval-literal a)]
                     [(true) #t]
@@ -95,4 +123,3 @@
                     [(nil) nil]
                     [(id) (eval-id a)]
                     [else (void)])]))))
-    

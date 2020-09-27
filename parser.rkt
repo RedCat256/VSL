@@ -81,6 +81,9 @@
     (define/public (statement)
       (cond [(_match 'print) (print-statement)]
             [(_match '|{|) (block-statement)]
+            [(_match 'if) (if-statement)]
+            [(_match 'while) (while-statement)]
+            [(_match 'for) (for-statement)]
             [else (expr-statement)]))
 
     (define/public (print-statement)
@@ -97,6 +100,48 @@
         (consume '|}| "Expect '}' after block.")
         (stat:block tok (reverse sts))))
 
+    (define/public (if-statement)
+      (define tok prev)
+      (define condition #f)
+      (define if-arm #f)
+      (define then-arm #f)
+      (consume '|(| "Expect '(' after if.")
+      (set! condition (expr))
+      (consume '|)| "Expect ')' after if condition.")
+      (set! if-arm (statement))
+      (when (_match 'else)
+        (set! then-arm (statement)))
+      (stat:if tok condition if-arm then-arm))
+
+    (define/public (while-statement)
+      (define tok prev)
+      (define condition #f)
+      (define body #f)
+      (consume '|(| "Expect '(' after while.")
+      (set! condition (expr))
+      (consume '|)| "Expect ')' after while condition.")
+      (set! body (statement))
+      (stat:while tok condition body))
+
+    (define/public (for-statement)
+      (define tok prev)
+      (define init #f)
+      (define condition #f)
+      (define step #f)
+      (define body #f)
+      (consume '|(| "Expect '(' after for.")
+      (cond [(_match 'var) (set! init (varDecl))]
+            [(_match '|;|) (set! init #f)]
+            [else (set! init (expr-statement))])
+      (unless (check '|;|)
+        (set! condition (expr)))
+      (consume '|;| "Expect ';' after loop condition.")
+      (unless (check '|)|)
+        (set! step (expr)))
+      (consume '|)| "Expect ')' after for clauses.")
+      (set! body (statement))
+      (stat:for tok init condition step body))
+      
     (define/public (expr-statement)
       (let ([tok cur]
             [e (expr)])

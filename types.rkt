@@ -10,6 +10,9 @@
          stat:expr stat:expr? stat:expr-expr
          stat:var stat:var? stat:var-init
          stat:block stat:block? stat:block-slist
+         stat:if stat:if? stat:if-condition stat:if-if-arm stat:if-then-arm
+         stat:while stat:while? stat:while-condition stat:while-body
+         stat:for stat:for? stat:for-init stat:for-condition stat:for-step stat:for-body
          runtime-exn runtime-exn? runtime-error)
 
 (define nil%
@@ -31,6 +34,9 @@
 (struct stat:expr node [expr] #:transparent)
 (struct stat:var node [init] #:transparent)
 (struct stat:block node [slist] #:transparent)
+(struct stat:if node [condition if-arm then-arm])
+(struct stat:while node [condition body])
+(struct stat:for node [init condition step body])
 
 (struct lex-exn exn:fail:user ())
 (struct parse-exn exn:fail:user ())
