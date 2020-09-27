@@ -18,23 +18,24 @@
 (define (read-file file)
   (define str "")
   (with-input-from-file file
-    (lambda ()
+    (λ ()
       (let ([line (read-line)])
         (while (not (eq? line eof))
           (set! str (string-append str line "\n"))
           (set! line (read-line)))
         str))))
 
-(define (repl-loop)
+(define (repl-loop itr)
   (let ((line (readline "user> ")))
     (with-handlers
-        ([lex-exn? (lambda (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop))]
-         [parse-exn? (lambda (exn) (eprintf "ParseError: ~a~n" (exn-message exn)) (repl-loop))])
+        ([lex-exn? (λ (exn) (eprintf "LexError: ~a~n" (exn-message exn)) (repl-loop itr))]
+         [parse-exn? (λ (exn) (eprintf "ParseError: ~a~n" (exn-message exn)) (repl-loop itr))]
+         [runtime-exn? (λ (exn) (eprintf "RuntimeError: ~a~n" (exn-message exn)) (repl-loop itr))])
       (cond [(eq? eof line) (newline)]
-            [line (let ([val (interpret line)])
+            [line (let ([val (interpret itr line)])
                     (unless (void? val)
                       (println val)))
-                  (repl-loop)]
+                  (repl-loop itr)]
             [else (newline)]))))
 
 (define (banner)
@@ -44,13 +45,14 @@
   (let ([sc (new scanner% [chars str])])
     (new parser% [tokens (send sc get-tokens)])))
 
-(define (interpret str)
-  (send (new interpreter%) _eval (send (make-parser str) statements)))
+(define (interpret itr str)
+  (send itr _eval (send (make-parser str) statements)))
 
 (define (main)
-  (if file
-      (interpret (read-file file))
-      (begin (banner)
-             (repl-loop))))
+  (let ([itr (new interpreter%)])
+    (if file
+        (interpret itr (read-file file))
+        (begin (banner)
+               (repl-loop itr)))))
 
 (main)

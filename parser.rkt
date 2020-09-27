@@ -62,11 +62,25 @@
       (let ([sts '()]
             [line (empty-token-line prev)])
         (while (not-at-end?)
-          (set! sts (cons (statement) sts)))
+          (set! sts (cons (declaration) sts)))
         (stat:statements (empty-token 'sts line) (reverse sts))))
+
+    (define/public (declaration)
+      (cond [(_match 'var) (varDecl)]
+            [else (statement)]))
+
+    (define/public (varDecl)
+      (let ([id cur]
+            [initializer nil])
+        (consume 'id "Expect variable name.")
+        (when (_match '=)
+          (set! initializer (expr)))
+        (consume '|;| "Expect ';' after variable declaration.")
+        (stat:var id initializer)))
 
     (define/public (statement)
       (cond [(_match 'print) (print-statement)]
+            [(_match '|{|) (block-statement)]
             [else (expr-statement)]))
 
     (define/public (print-statement)
@@ -74,6 +88,14 @@
             [e (expr)])
         (consume '|;| "Expect ';' after value.")
         (stat:print tok e)))
+
+    (define/public (block-statement)
+      (let ([sts '()]
+            [tok prev])
+        (while (and (not (check '|}|)) (not-at-end?))
+          (set! sts (cons (declaration) sts)))
+        (consume '|}| "Expect '}' after block.")
+        (stat:block tok (reverse sts))))
 
     (define/public (expr-statement)
       (let ([tok cur]
@@ -99,8 +121,9 @@
     (define/public (binary left)
       (define type (empty-token-type prev))
       (case type
-        [(= or and == != < > <= >= + - * /)
+        [(or and == != < > <= >= + - * /)
          (expr:binary prev left (parse-prec (get-prec prev)))]
+        [(=) (expr:binary prev left (parse-prec (sub1 (get-prec prev))))]
         [else (parse-error (format "Invalid binary operator '~a'" type))]))
        
     (define/public (get-prec tok)

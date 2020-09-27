@@ -7,7 +7,10 @@
          expr:binary-left expr:binary-right stat:statements
          stat:statements? stat:statements-slist empty-token-line
          stat:print stat:print? stat:print-expr
-         stat:expr stat:expr? stat:expr-expr)
+         stat:expr stat:expr? stat:expr-expr
+         stat:var stat:var? stat:var-init
+         stat:block stat:block? stat:block-slist
+         runtime-exn runtime-exn? runtime-error)
 
 (define nil%
   (class object%
@@ -26,9 +29,15 @@
 (struct stat:statements node [slist] #:transparent)
 (struct stat:print node [expr] #:transparent)
 (struct stat:expr node [expr] #:transparent)
+(struct stat:var node [init] #:transparent)
+(struct stat:block node [slist] #:transparent)
 
 (struct lex-exn exn:fail:user ())
 (struct parse-exn exn:fail:user ())
+(struct runtime-exn exn:fail:user ())
+
+(define (runtime-error msg)
+  (raise (runtime-exn msg (current-continuation-marks))))
 
 (define-syntax while
   (syntax-rules ()
