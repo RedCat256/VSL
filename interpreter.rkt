@@ -11,7 +11,7 @@
     (define env (new env% [outer nil]))
 
     (define binary-ops (list `(+ ,+) `(- ,-) `(* ,*) `(/ ,/) `(< ,<) `(<= , <=)
-                             `(> ,>) `(>= ,>=) `(== ,=)))
+                             `(> ,>) `(>= ,>=) `(== ,=) `(!= ,(λ (x y) (not (= x y))))))
 
     (define/public (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
@@ -36,7 +36,7 @@
       (define right (expr:binary-right a))
       (define type (empty-token-type tok))
       (case type
-        [(+ - * / < <= > >= ==)
+        [(+ - * / < <= > >= == !=)
          (let ([msg (format "Operands of '~a' must be number." type)])
            ((symbol-function type)
             (check number? (_eval left) msg)
@@ -45,6 +45,31 @@
         [(or) (or (_eval left) (_eval right))]
         [(=) (eval-assign a)]))
 
+    (define/public (call fn args)
+      (let ([_env (new env% [outer env])]
+            [last env])
+        (for ([i (function-parameters fn)]
+              [j args])
+          (send _env defvar i j))
+        (set! env _env)
+        (with-handlers
+            ([return-exn? (λ (e) (begin0 (cadr e) (set! env last)))])
+          (eval-block (function-body fn))
+          (set! env last))))
+      
+    (define/public (eval-call a)
+      (define callee (_eval (expr:call-callee a)))
+      (define num_a (length (expr:call-args a)))
+      (define num_p 0)
+      (unless (function? callee)
+        (runtime-error "Expect callable object before '('."))
+      (set! num_p (length (function-parameters callee)))
+
+      (when (not (= num_a num_p))
+        (runtime-error (format "Expect ~a arguments, got ~a." num_p num_a)))
+      
+      (call callee (for/list ([arg (expr:call-args a)]) (_eval arg))))
+    
     (define/public (eval-assign a)
       (let* ([left (expr:binary-left a)]
              [name (token-value left)]
@@ -105,9 +130,20 @@
           (_eval body)
           (_eval step))))
 
+    (define/public (eval-fun a)
+      (let ([name (stat:fun-name a)]
+            [pars (stat:fun-parameters a)]
+            [body (stat:fun-body a)])
+        (send env defvar name (function name pars body env))))
+
+    (define/public (eval-return a)
+      (let ([val (_eval (stat:return-expr a))])
+        (raise `(return ,val))))
+
     (define/public (_eval a)
       (cond [(expr:unary? a) (eval-unary a)]
             [(expr:binary? a) (eval-binary a)]
+            [(expr:call? a) (eval-call a)]
             [(stat:statements? a) (eval-statements a)]
             [(stat:print? a) (eval-print a)]
             [(stat:expr? a) (_eval (stat:expr-expr a))]
@@ -116,6 +152,8 @@
             [(stat:if? a) (eval-if a)]
             [(stat:while? a) (eval-while a)]
             [(stat:for? a) (eval-for a)]
+            [(stat:fun? a) (eval-fun a)]
+            [(stat:return? a) (eval-return a)]
             [else (case (empty-token-type a)
                     [(number string) (eval-literal a)]
                     [(true) #t]

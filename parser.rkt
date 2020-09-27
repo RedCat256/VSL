@@ -67,6 +67,7 @@
 
     (define/public (declaration)
       (cond [(_match 'var) (varDecl)]
+            [(_match 'fun) (funDecl)]
             [else (statement)]))
 
     (define/public (varDecl)
@@ -78,12 +79,31 @@
         (consume '|;| "Expect ';' after variable declaration.")
         (stat:var id initializer)))
 
+    (define/public (funDecl)
+      (define tok prev)
+      (define id cur)
+      (define plist '())
+      (define body #f)
+      (consume 'id "Expect function name.")
+      (consume '|(| "Expect '(' after function name.")
+      (while (and (not (check '|)|)) (not-at-end?))
+        (consume 'id "Expect variable for arguments.")
+        (set! plist (cons (token-value prev) plist))
+        (unless (check '|)|)
+          (consume '|,| "Expect ',' or ')' after parameter.")))
+      (set! plist (reverse plist))
+      (consume '|)| "Expect ')' after parameters.")
+      (consume '|{| "Expect '{' before function body.")
+      (set! body (block-statement))
+      (stat:fun tok (token-value id) plist body))
+
     (define/public (statement)
       (cond [(_match 'print) (print-statement)]
             [(_match '|{|) (block-statement)]
             [(_match 'if) (if-statement)]
             [(_match 'while) (while-statement)]
             [(_match 'for) (for-statement)]
+            [(_match 'return) (return-statement)]
             [else (expr-statement)]))
 
     (define/public (print-statement)
@@ -141,6 +161,12 @@
       (consume '|)| "Expect ')' after for clauses.")
       (set! body (statement))
       (stat:for tok init condition step body))
+
+    (define/public (return-statement)
+      (define tok prev)
+      (define val (expr))
+      (consume '|;| "Expect ';' after return value.")
+      (stat:return tok val))
       
     (define/public (expr-statement)
       (let ([tok cur]
@@ -163,12 +189,23 @@
         [(|(|) (next) (begin0 (expr) (consume '|)| "Expect ')' for grouping"))]
         [else (parse-error (format "Invalid unary operator '~a'" type))]))
 
+    (define/public (arglist)
+      (define alist '())
+      (while (and (not (check '|)|)) (not-at-end?))
+        (set! alist (cons (expr) alist))
+        (unless (check '|)|)
+          (consume '|,| "Expect ',' or ')' after argument.")))
+      (reverse alist))
+
     (define/public (binary left)
       (define type (empty-token-type prev))
       (case type
         [(or and == != < > <= >= + - * /)
          (expr:binary prev left (parse-prec (get-prec prev)))]
         [(=) (expr:binary prev left (parse-prec (sub1 (get-prec prev))))]
+        [(|(|) (let ([alist (arglist)])
+                 (consume '|)| "Expect ')' after function call.")
+                 (expr:call prev left alist))]
         [else (parse-error (format "Invalid binary operator '~a'" type))]))
        
     (define/public (get-prec tok)
@@ -180,6 +217,7 @@
         [(< > <= >=) 90]
         [(+ -) 100]
         [(* /) 110]
+        [(|.| |(|) 130] ; skip 120 for unary
         [else 0]))
 
     (define/public (expr)
