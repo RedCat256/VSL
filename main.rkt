@@ -46,7 +46,7 @@
     (new parser% [tokens (send sc get-tokens)])))
 
 (define (interpret itr str)
-  (send itr _eval (send (make-parser str) statements)))
+  (send itr _eval (send (make-parser str) stats)))
 
 (define (main)
   (let ([itr (new interpreter%)])

@@ -21,7 +21,7 @@
     (define/public (has-declared? name)
       (hash-has-key? symtab name))
 
-    (define/public (_get name)
+    (define/private (_get name)
       (define cur this)
       (call/cc
        (λ (return)

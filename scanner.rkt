@@ -23,48 +23,48 @@
       (for ([k keys])
         (hash-set! keywords k #t)))
     
-    (define/public (peek)
+    (define/private (peek)
       (if (>= pos (string-length chars))
           eof
           (string-ref chars pos)))
 
-    (define/public (next)
+    (define/private (next)
       (when (eqv? #\newline c)
         (set! line (add1 line)))
       (set! pos (add1 pos))
       (set! prev c)
       (set! c (peek)))
 
-    (define/public (_match ch)
+    (define/private (_match ch)
       (and (eqv? ch c) (next)))
 
-    (define/public (_text)
+    (define/private (_text)
       (substring chars start pos))
 
-    (define/public (numeric?)
+    (define/private (numeric?)
       (and (char? c) (char-numeric? c)))
 
-    (define/public (name-start?)
+    (define/private (name-start?)
       (and (char? c) (or (eqv? c #\_) (char-alphabetic? c))))
 
-    (define/public (name-char?)
+    (define/private (name-char?)
       (or (name-start?) (numeric?)))
 
-    (define/public (whitespace?)
+    (define/private (whitespace?)
       (and (char? c) (char-whitespace? c)))
 
-    (define/public (make-string-token)
+    (define/private (make-string-token)
       (while (not (or (eqv? c eof) (eqv? c #\")))
         (next))
       (next) ; skip right "
       (token 'string line (substring chars (add1 start) (sub1 pos))))
 
-    (define/public (make-number-token)
+    (define/private (make-number-token)
       (while (numeric?)
         (next))
       (token 'number line (string->number (_text))))
 
-    (define/public (make-id-token)
+    (define/private (make-id-token)
       (while (name-char?)
         (next))
       (let ([sym (string->symbol (_text))])
@@ -72,11 +72,11 @@
             (empty-token sym line)
             (token 'id line (string->symbol (_text))))))
 
-    (define/public (skip-white)
+    (define/private (skip-white)
       (while (whitespace?)
         (next)))
 
-    (define/public (skip-comment)
+    (define/private (skip-comment)
       (while (not (or (eqv? c eof) (eqv? c #\newline)))
         (next)))
 
@@ -89,7 +89,7 @@
         (set! tokens (cons tok tokens))
         (reverse tokens)))
 
-    (define/public (tokenize)
+    (define/private (tokenize)
       (skip-white)
       (set! start pos)
       (cond [(eof-object? c) (empty-token 'eof line)]
@@ -106,4 +106,4 @@
                [(/) (next)
                     (cond [(_match #\/) (skip-comment) (tokenize)]
                           [else (empty-token '/ line)])]
-               [else (raise (lex-exn (format "Invalid character '~a'" c) (current-continuation-marks)))])]))))
+               [else (lex-error (format "Invalid character '~a'" c))])]))))

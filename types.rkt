@@ -19,7 +19,7 @@
 (struct expr:binary node [left right])
 (struct expr:call node [callee args])
 
-(struct stat:statements node [slist])
+(struct stat:stats node [slist])
 (struct stat:print node [expr])
 (struct stat:expr node [expr])
 (struct stat:var node [init])
@@ -36,9 +36,6 @@
 (struct parse-exn exn:fail:user ())
 (struct runtime-exn exn:fail:user ())
 
-(define (runtime-error msg)
-  (raise (runtime-exn msg (current-continuation-marks))))
-
 (define-syntax while
   (syntax-rules ()
     ((while predicate e ...)
@@ -49,3 +46,12 @@
 
 (define (return-exn? l)
   (and (list? l) (eq? (car l) 'return)))
+
+(define (make-error exn)
+  (λ (msg)
+    (raise (parse-exn msg (current-continuation-marks)))))
+
+(define-values (lex-error parse-error runtime-error)
+  ((λ (fn)
+     (values (fn lex-exn) (fn parse-exn) (fn runtime-exn))) make-error))
+   
