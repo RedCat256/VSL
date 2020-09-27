@@ -5,14 +5,13 @@
 
 (define env%
   (class object%
-    (init outer)
+    (init-field outer)
     (super-new)
 
-    (define _outer outer)
-    (define symtab (make-hash))
+    (field [symtab (make-hash)])
 
     (define/public (defvar name value)
-      (when (and (not (nil? _outer)) (has-declared? name))
+      (when (and (not (nil? outer)) (has-declared? name))
         (runtime-error (format "Variable '~a' has already declared in this scope." name)))
       (hash-set! symtab name value))
 
@@ -29,27 +28,19 @@
          (while (not (nil? cur))
            (if (send cur has-declared? name)
                (return cur)
-               (set! cur (send cur get-outer))))
+               (set! cur (get-field outer cur))))
          (runtime-error (format "Undefined variable '~a'." name)))))
-
-    (define/public (get-outer) _outer)
-    
-    (define/public (set-outer! x)
-      (set! _outer x))
-    
-    (define/public (set-symtab! x)
-      (set! symtab x))
 
     (define/public (copy-env)
       (define new_env (new env% [outer nil]))
-      (unless (nil? _outer)
-        (send new_env set-outer! (send _outer copy-env)))
-      (send new_env set-symtab!(hash-copy symtab))
+      (unless (nil? outer)
+        (set-field! outer new_env (send outer copy-env)))
+      (set-field! symtab new_env (hash-copy symtab))
       new_env)
 
     (define/public (assign name value)
       (let ([e (_get name)])
-        (send e defvar name value)))
+        (hash-set! (get-field symtab e) name value)))
           
     (define/public (get name)
       (let ([e (_get name)])

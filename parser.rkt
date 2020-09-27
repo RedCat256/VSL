@@ -6,19 +6,18 @@
 
 (define parser%
   (class object%
-    (init tokens)
+    (init-field tokens)
     (super-new)
 
-    (define toks tokens)
     (define pos 0)
     (define cur (peek))
     (define prev cur)
-    (define currentFunction #f)
+    (define depth 0) ; 0 represents top level
     
     (define/public (peek)
-      (if (>= pos (length toks))
+      (if (>= pos (length tokens))
           nil
-          (list-ref toks pos)))
+          (list-ref tokens pos)))
 
     (define/public (next)
       (set! prev cur)
@@ -81,11 +80,9 @@
         (stat:var id initializer)))
 
     (define/public (funDecl)
-      (define tok prev)
-      (define id cur)
-      (define plist '())
-      (define body #f)
-      (set! currentFunction #t)
+      (define-values (tok id plist body)
+        (values prev cur '() #f))
+      (set! depth (add1 depth))
       
       (consume 'id "Expect function name.")
       (consume '|(| "Expect '(' after function name.")
@@ -98,7 +95,7 @@
       (consume '|)| "Expect ')' after parameters.")
       (consume '|{| "Expect '{' before function body.")
       (set! body (block-statement))
-      (set! currentFunction #f)
+      (set! depth (sub1 depth))
       (stat:fun tok (token-value id) plist body))
 
     (define/public (statement)
@@ -125,10 +122,8 @@
         (stat:block tok (reverse sts))))
 
     (define/public (if-statement)
-      (define tok prev)
-      (define condition #f)
-      (define if-arm #f)
-      (define then-arm #f)
+      (define-values (tok condition if-arm then-arm)
+        (values prev #f #f #f))
       (consume '|(| "Expect '(' after if.")
       (set! condition (expr))
       (consume '|)| "Expect ')' after if condition.")
@@ -138,9 +133,7 @@
       (stat:if tok condition if-arm then-arm))
 
     (define/public (while-statement)
-      (define tok prev)
-      (define condition #f)
-      (define body #f)
+      (define-values (tok condition body) (values prev #f #f))
       (consume '|(| "Expect '(' after while.")
       (set! condition (expr))
       (consume '|)| "Expect ')' after while condition.")
@@ -148,11 +141,8 @@
       (stat:while tok condition body))
 
     (define/public (for-statement)
-      (define tok prev)
-      (define init #f)
-      (define condition #f)
-      (define step #f)
-      (define body #f)
+      (define-values (tok init condition increment body)
+        (values prev #f #f #f #f))
       (consume '|(| "Expect '(' after for.")
       (cond [(_match 'var) (set! init (varDecl))]
             [(_match '|;|) (set! init #f)]
@@ -161,15 +151,15 @@
         (set! condition (expr)))
       (consume '|;| "Expect ';' after loop condition.")
       (unless (check '|)|)
-        (set! step (expr)))
+        (set! increment (expr)))
       (consume '|)| "Expect ')' after for clauses.")
       (set! body (statement))
-      (stat:for tok init condition step body))
+      (stat:for tok init condition increment body))
 
     (define/public (return-statement)
       (define tok prev)
       (define val #f)
-      (unless currentFunction
+      (when (zero? depth)
         (parse-error "Cannot return from top level code."))
       (set! val (expr))
       (consume '|;| "Expect ';' after return value.")

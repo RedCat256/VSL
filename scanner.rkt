@@ -8,11 +8,10 @@
 
 (define scanner%
   (class object%
-    (init chars)
+    (init-field chars)
     (super-new)
     
     (define pos 0)
-    (define str chars)
     (define start 0)
     (define line 1)
     (define c (peek))
@@ -25,9 +24,9 @@
         (hash-set! keywords k #t)))
     
     (define/public (peek)
-      (if (>= pos (string-length str))
+      (if (>= pos (string-length chars))
           eof
-          (string-ref str pos)))
+          (string-ref chars pos)))
 
     (define/public (next)
       (when (eqv? #\newline c)
@@ -40,7 +39,7 @@
       (and (eqv? ch c) (next)))
 
     (define/public (_text)
-      (substring str start pos))
+      (substring chars start pos))
 
     (define/public (numeric?)
       (and (char? c) (char-numeric? c)))
@@ -58,7 +57,7 @@
       (while (not (or (eqv? c eof) (eqv? c #\")))
         (next))
       (next) ; skip right "
-      (token 'string line (substring str (add1 start) (sub1 pos))))
+      (token 'string line (substring chars (add1 start) (sub1 pos))))
 
     (define/public (make-number-token)
       (while (numeric?)
