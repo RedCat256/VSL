@@ -31,13 +31,6 @@
                (set! cur (get-field outer cur))))
          (runtime-error (format "Undefined variable '~a'." name)))))
 
-    (define/public (copy-env)
-      (define new_env (new env% [outer nil]))
-      (unless (nil? outer)
-        (set-field! outer new_env (send outer copy-env)))
-      (set-field! symtab new_env (hash-copy symtab))
-      new_env)
-
     (define/public (assign name value)
       (let ([e (_get name)])
         (hash-set! (get-field symtab e) name value)))

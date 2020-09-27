@@ -141,7 +141,8 @@
       (let ([name (stat:fun-name a)]
             [pars (stat:fun-parameters a)]
             [body (stat:fun-body a)])
-        (send env defvar name (function name pars body (send env copy-env)))))
+        (send env defvar name (function name pars body env))
+        (set! env (new env% [outer env]))))
 
     (define/public (eval-return a)
       (let ([val (_eval (stat:return-expr a))])
