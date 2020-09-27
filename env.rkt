@@ -12,6 +12,8 @@
     (define symtab (make-hash))
 
     (define/public (defvar name value)
+      (when (and (not (nil? _outer)) (has-declared? name))
+        (runtime-error (format "Variable '~a' has already declared in this scope." name)))
       (hash-set! symtab name value))
 
     (define/public (getvar name)
@@ -31,6 +33,19 @@
          (runtime-error (format "Undefined variable '~a'." name)))))
 
     (define/public (get-outer) _outer)
+    
+    (define/public (set-outer! x)
+      (set! _outer x))
+    
+    (define/public (set-symtab! x)
+      (set! symtab x))
+
+    (define/public (copy-env)
+      (define new_env (new env% [outer nil]))
+      (unless (nil? _outer)
+        (send new_env set-outer! (send _outer copy-env)))
+      (send new_env set-symtab!(hash-copy symtab))
+      new_env)
 
     (define/public (assign name value)
       (let ([e (_get name)])

@@ -13,6 +13,7 @@
     (define pos 0)
     (define cur (peek))
     (define prev cur)
+    (define currentFunction #f)
     
     (define/public (peek)
       (if (>= pos (length toks))
@@ -84,6 +85,8 @@
       (define id cur)
       (define plist '())
       (define body #f)
+      (set! currentFunction #t)
+      
       (consume 'id "Expect function name.")
       (consume '|(| "Expect '(' after function name.")
       (while (and (not (check '|)|)) (not-at-end?))
@@ -95,6 +98,7 @@
       (consume '|)| "Expect ')' after parameters.")
       (consume '|{| "Expect '{' before function body.")
       (set! body (block-statement))
+      (set! currentFunction #f)
       (stat:fun tok (token-value id) plist body))
 
     (define/public (statement)
@@ -164,7 +168,10 @@
 
     (define/public (return-statement)
       (define tok prev)
-      (define val (expr))
+      (define val #f)
+      (unless currentFunction
+        (parse-error "Cannot return from top level code."))
+      (set! val (expr))
       (consume '|;| "Expect ';' after return value.")
       (stat:return tok val))
       

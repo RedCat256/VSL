@@ -46,7 +46,7 @@
         [(=) (eval-assign a)]))
 
     (define/public (call fn args)
-      (let ([_env (new env% [outer env])]
+      (let ([_env (new env% [outer (function-env fn)])]
             [last env])
         (for ([i (function-parameters fn)]
               [j args])
@@ -134,7 +134,7 @@
       (let ([name (stat:fun-name a)]
             [pars (stat:fun-parameters a)]
             [body (stat:fun-body a)])
-        (send env defvar name (function name pars body env))))
+        (send env defvar name (function name pars body (send env copy-env)))))
 
     (define/public (eval-return a)
       (let ([val (_eval (stat:return-expr a))])
