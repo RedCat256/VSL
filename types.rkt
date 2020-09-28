@@ -22,6 +22,7 @@
 (struct expr:get     node [receiver])
 (struct expr:set     node [receiver expr])
 (struct expr:this    node [])
+(struct expr:super   node [])
 
 (struct stat:stats   node [slist])
 (struct stat:print   node [expr])
@@ -33,10 +34,10 @@
 (struct stat:for     node [init condition increment body])
 (struct stat:fun     node [name parameters body])
 (struct stat:return  node [expr])
-(struct stat:class   node [methods])
+(struct stat:class   node [super-class methods])
 
 (struct loxFunction    [name parameters body env])
-(struct loxClass       [name methods])
+(struct loxClass       [name super-class methods])
 (struct loxInstance    [name klass fields])
 
 (struct lex-exn     exn:fail:user ())
@@ -108,12 +109,17 @@
 (define (instance-set obj field value)
   (hash-set! (loxInstance-fields obj) field value))
 
-(define (class-has? obj field)
-  (when (loxInstance? obj)
-    (set! obj (loxInstance-klass obj)))
-  (hash-has-key? (loxClass-methods obj) field))
-
 (define (class-get obj field)
-  (when (loxInstance? obj)
-    (set! obj (loxInstance-klass obj)))
-  (hash-ref (loxClass-methods obj) field))
+  (let ([klass obj]
+        [fn #f])
+    (when (loxInstance? obj)
+      (set! klass (loxInstance-klass obj)))
+
+    (call/cc
+     (λ (return)
+       (while (not (nil? klass))
+         (set! fn (hash-ref (loxClass-methods klass) field #f))
+         (when fn
+           (return fn))
+         (set! klass (loxClass-super-class klass)))
+       #f))))

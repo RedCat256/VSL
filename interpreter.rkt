@@ -62,8 +62,8 @@
       (let* ([init #f]
              [name (format "~a instance" (loxClass-name klass))]
              [ins (loxInstance name  klass (make-hash))])
-        (cond [(class-has? klass 'init) 
-               (set! init (bind/this ins (class-get klass 'init)))
+        (cond [(hash-has-key? (loxClass-methods klass) 'init) 
+               (set! init (bind/this ins (hash-ref (loxClass-methods klass) 'init)))
                (set! constructor? #t)
                (call/fn init args)
                (set! constructor? #f)]
@@ -88,11 +88,12 @@
         
     (define/private (eval-get a)
       (let ([receiver (_eval (expr:get-receiver a))]
-            [field    (token-value (node-token a))])
+            [field    (token-value (node-token a))]
+            [fn #f])
         (unless (loxInstance? receiver)
           (runtime-error "Only instances have properties."))
         (cond [(instance-has? receiver field) (instance-get receiver field)]
-              [(class-has? receiver field) (bind/this receiver (class-get receiver field))]
+              [(begin (set! fn (class-get receiver field)) fn) (bind/this receiver fn)]
               [else (runtime-error (format "Undefined Property '~a'." field))])))
 
     (define/private (eval-set a)
@@ -105,6 +106,18 @@
 
     (define/private (eval-this a)
       (send env get "this"))
+
+    (define/private (eval-super a)
+      (let* ([m_name (token-value (node-token a))]
+             [_this  (send env get "this")]
+             [super-class (loxClass-super-class (loxInstance-klass _this))])
+        (when (nil? super-class)
+          (runtime-error "Cannot use 'super' in a class without superclass."))
+        (let ([method (class-get super-class m_name)])
+          (unless method
+            (runtime-error "Undefined property '~a'." m_name))
+          (set! method (bind/this _this method))
+          method)))
     
     (define/private (eval-assign a)
       (let ([name  (token-value (node-token a))]
@@ -184,19 +197,31 @@
       (let ([name (stat:fun-name a)]
             [pars (stat:fun-parameters a)]
             [body (stat:fun-body a)])
-        (send env defvar name (loxFunction name pars body (new env% [outer env])))))
+        (send env defvar name (loxFunction name pars body env))))
 
     (define/private (eval-class a)
       (let ([name (token-value (node-token a))]
             [methods (stat:class-methods a)]
-            [memory (make-hash)])
+            [memory (make-hash)]
+            [super-class nil]
+            [super-class-name nil])
+        (unless (nil? (stat:class-super-class a))
+          (set! super-class-name (token-value (stat:class-super-class a)))
+          
+          (when (eq? name super-class-name)
+            (runtime-error "A class cannot inherit from itself."))
+          
+          (set! super-class (send env get super-class-name))
+          (unless (loxClass? super-class)
+            (runtime-error "Superclass must be a class.")))
+                      
         (for ([i methods])
           (let* ([_name (stat:fun-name i)]
                  [pars (stat:fun-parameters i)]
                  [body (stat:fun-body i)]
                  [fn   (loxFunction _name pars body env)])
             (hash-set! memory _name fn)))
-        (send env defvar name (loxClass name memory))))
+        (send env defvar name (loxClass name super-class memory))))
 
     (define/private (eval-return a)
       (when constructor?
@@ -212,6 +237,7 @@
             [(expr:get? a)    (eval-get a)]
             [(expr:set? a)    (eval-set a)]
             [(expr:this? a)   (eval-this a)]
+            [(expr:super? a)  (eval-super a)]
             [(stat:stats? a)  (eval-stats a)]
             [(stat:print? a)  (eval-print a)]
             [(stat:expr? a)   (_eval (stat:expr-expr a))]

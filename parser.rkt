@@ -100,11 +100,16 @@
         (stat:fun tok (token-value id) plist body)))
 
     (define/private (_class)
-      (let ([name cur] [methods '()])
+      (let ([name cur] [methods '()] [superClass nil])
 
         (set! inClass #t) ; enter class
       
         (consume 'id "Expect class name.")
+
+        (when (_match '<)
+          (consume 'id "Expect super class name.")
+          (set! superClass prev))
+        
         (consume '|{| "Expect '{' after class name.")
         (while (and (not (check '|}|)) (not-at-end?))
           (set! methods (cons (fun "method") methods)))
@@ -112,7 +117,7 @@
 
         (set! inClass #f) ; exit class
       
-        (stat:class name (reverse methods))))
+        (stat:class name superClass (reverse methods))))
 
     (define/private (stat)
       (cond [(_match 'print)  (print-stat)]
@@ -199,8 +204,12 @@
           [(- !) (next) (expr:unary prev (parse-prec 120))]
           [(number id string true false nil) (next) prev]
           [(|(|) (next) (begin0 (expr) (consume '|)| "Expect ')' for grouping"))]
-          [(this) (cond [inClass (next) (expr:this prev)]
-                        [else (parse-error "Cannot use 'this' out of class.")])]
+          [(this)  (cond [inClass (next) (expr:this prev)]
+                         [else (parse-error "Cannot use 'this' out of class.")])]
+          [(super) (cond [inClass (next) (consume '|.| "Expect '.' after super.")
+                                  (consume 'id "Expect identifier after '.'")
+                                  (expr:super prev)]
+                         [else (parse-error "Cannot use 'super' out of class.")])]
           [else (parse-error "Invalid unary operator '~a'" type)])))
 
     (define/private (arglist)
