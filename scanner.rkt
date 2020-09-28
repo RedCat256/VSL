@@ -59,6 +59,10 @@
     (define/private (make-number-token)
       (while (numeric?)
         (next))
+      (when(eqv? c #\.)
+        (next)
+        (while (numeric?)
+          (next)))
       (token 'number line (string->number (_text))))
 
     (define/private (make-id-token)
