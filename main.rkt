@@ -10,11 +10,6 @@
   (display prompt)
   (read-line))
 
-(define args (current-command-line-arguments))
-(define file #f)
-(when (> (vector-length args) 0)
-  (set! file (vector-ref args 0)))
-
 (define (read-file file)
   (define str "")
   (with-input-from-file file
@@ -47,7 +42,11 @@
     (send itr _eval (send (make-parser str) stats))))
 
 (define (main)
-  (let ([itr (new interpreter%)])
+  (let ([itr (new interpreter%)]
+        [file #f]
+        [args (current-command-line-arguments)])
+    (when (> (vector-length args) 0)
+      (set! file (vector-ref args 0)))
     (if file
         (interpret itr (read-file file))
         (begin (banner)

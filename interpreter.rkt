@@ -4,8 +4,6 @@
 
 (provide interpreter%)
 
-
-
 (define interpreter%
   (class object%
     (super-new)
