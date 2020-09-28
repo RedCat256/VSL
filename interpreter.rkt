@@ -44,19 +44,19 @@
           [(or) (or (_eval left) (_eval right))])))
 
     (define/private (call/fn fn args)
-      (let ([_env  (new env% [outer (function-env fn)])]
+      (let ([_env  (new env% [outer (loxFunction-env fn)])]
             [last  env]
-            [arity (length (function-parameters fn))]
+            [arity (length (loxFunction-parameters fn))]
             [return-val (void)])
         (when (not (= arity (length args)))
           (runtime-error "Expect ~a arguments, got ~a." arity (length args)))
-        (for ([i (function-parameters fn)]
+        (for ([i (loxFunction-parameters fn)]
               [j args])
           (send _env defvar i j))
         (set! env _env)
         (with-handlers
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
-          (eval-block (function-body fn)))
+          (eval-block (loxFunction-body fn)))
         (set! env last)
         return-val))
 
@@ -73,18 +73,18 @@
     (define/private (eval-call a)
       (let ([callee (_eval (expr:call-callee a))]
             [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
-        (cond [(function? callee) (call/fn callee args)]
+        (cond [(loxFunction? callee) (call/fn callee args)]
               [(loxClass? callee) (call/new callee args)]
               [else (runtime-error "Expect callable object before '('.")])))
 
     (define/private (bind/this ins fn)
-      (let* ([env (function-env fn)]
+      (let* ([env (loxFunction-env fn)]
              [new_env (new env% [outer env])]
-             [name (function-name fn)]
-             [parameters (function-parameters fn)]
-             [body (function-body fn)])
+             [name (loxFunction-name fn)]
+             [parameters (loxFunction-parameters fn)]
+             [body (loxFunction-body fn)])
         (send new_env defvar "this" ins)
-        (function name parameters body new_env)))
+        (loxFunction name parameters body new_env)))
         
     (define/private (eval-get a)
       (let ([receiver (_eval (expr:get-receiver a))]
@@ -168,7 +168,7 @@
       (let ([name (stat:fun-name a)]
             [pars (stat:fun-parameters a)]
             [body (stat:fun-body a)])
-        (send env defvar name (function name pars body (new env% [outer env])))))
+        (send env defvar name (loxFunction name pars body (new env% [outer env])))))
 
     (define/private (eval-class a)
       (let ([name (token-value (node-token a))]
@@ -178,7 +178,7 @@
           (let* ([_name (stat:fun-name i)]
                  [pars (stat:fun-parameters i)]
                  [body (stat:fun-body i)]
-                 [fn   (function _name pars body env)])
+                 [fn   (loxFunction _name pars body env)])
             (hash-set! memory _name fn)))
         (send env defvar name (loxClass name memory))))
 

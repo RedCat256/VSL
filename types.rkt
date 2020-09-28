@@ -35,7 +35,7 @@
 (struct stat:return  node [expr])
 (struct stat:class   node [methods])
 
-(struct function       [name parameters body env])
+(struct loxFunction    [name parameters body env])
 (struct loxClass       [name methods])
 (struct loxInstance    [name klass fields])
 
