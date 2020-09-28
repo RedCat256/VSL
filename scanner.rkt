@@ -59,6 +59,8 @@
     (define/private (make-string-token)
       (while (not (or (eqv? c eof) (eqv? c #\")))
         (next))
+      (when (eqv? c eof)
+        (parse-error "Unterminated string."))
       (next) ; skip right "
       (token 'string line (substring chars (add1 start) (sub1 pos))))
 
