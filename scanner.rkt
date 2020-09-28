@@ -19,6 +19,12 @@
                       print return super this true var while)])
       (for ([k keys])
         (hash-set! keywords k #t)))
+
+    (define/private (lookahead n)
+      (let ([_pos (+ pos n)])
+        (if (>= _pos (string-length chars))
+            eof
+            (string-ref chars _pos))))
     
     (define/private (peek)
       (if (>= pos (string-length chars))
@@ -59,10 +65,13 @@
     (define/private (make-number-token)
       (while (numeric?)
         (next))
-      (when(eqv? c #\.)
-        (next)
-        (while (numeric?)
-          (next)))
+      (let ([nc (lookahead 1)])
+        (when (and (eqv? c #\.)
+                   (char? nc)
+                   (char-numeric? nc))
+          (next)
+          (while (numeric?)
+            (next))))
       (token 'number line (string->number (_text))))
 
     (define/private (make-id-token)
