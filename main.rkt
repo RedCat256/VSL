@@ -27,14 +27,12 @@
 
 (define (repl-loop itr)
   (let ([line (readline "user> ")])
-    (with-handlers
-        ([user-exn-catched? (λ (e) (print-user-error e) (repl-loop itr))])
-      (cond [(eq? eof line) (newline)]
-            [line (let ([val (interpret itr line)])
-                    (unless (void? val)
-                      (println val)))
-                  (repl-loop itr)]
-            [else (newline)]))))
+    (cond [(eq? eof line) (newline)]
+          [line (let ([val (interpret itr line)])
+                  (unless (void? val)
+                    (println val)))
+                (repl-loop itr)]
+          [else (newline)])))
 
 (define (banner)
   (printf "[lox]~n"))
@@ -44,7 +42,9 @@
     (new parser% [tokens (send sc get-tokens)])))
 
 (define (interpret itr str)
-  (send itr _eval (send (make-parser str) stats)))
+  (with-handlers
+      ([user-exn-catched? (λ (e) (print-user-error e))])
+    (send itr _eval (send (make-parser str) stats))))
 
 (define (main)
   (let ([itr (new interpreter%)])

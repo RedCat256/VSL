@@ -3,9 +3,6 @@
 
 (provide scanner%)
 
-(define (char-to-symbol c)
-  (string->symbol (string c)))
-
 (define scanner%
   (class object%
     (init-field chars)
@@ -106,4 +103,4 @@
                [(/) (next)
                     (cond [(_match #\/) (skip-comment) (tokenize)]
                           [else (empty-token '/ line)])]
-               [else (lex-error (format "Invalid character '~a'" c))])]))))
+               [else (lex-error "Invalid character '~a'" c)])]))))

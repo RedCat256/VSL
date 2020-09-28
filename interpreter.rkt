@@ -8,6 +8,8 @@
   (class object%
     (super-new)
 
+    (define constructor? #f)
+
     (define env (new env% [outer nil]))
 
     (define binary-ops (list `(+ ,+) `(- ,-) `(* ,*) `(/ ,/) `(< ,<) `(<= , <=)
@@ -18,8 +20,7 @@
         (if p (second p) #f)))
 
     (define/private (eval-unary a)
-      (define tok (node-token a))
-      (case (empty-token-type tok)
+      (case (empty-token-type (node-token a))
         [(+) (+ (_eval (expr:unary-expr a)))]
         [(-) (- (_eval (expr:unary-expr a)))]
         [(!) (not (_eval (expr:unary-expr a)))]))
@@ -27,56 +28,87 @@
     (define/private (check p val msg)
       (if (p val) val (runtime-error msg)))
 
-    (define/private (divide a b)
-      (cond [(zero? b) ((if (< a 0) - +) +inf.0)]
-            [else (/ a b)]))
-
     (define/private (eval-binary a)
-      (define tok (node-token a))
-      (define left (expr:binary-left a))
-      (define right (expr:binary-right a))
-      (define type (empty-token-type tok))
-      (case type
-        [(+ - * / < <= > >= == !=)
-         (let* ([msg (format "Operands of '~a' must be number." type)]
-                [lval (check number? (_eval left) msg)]
-                [rval (check number? (_eval right) msg)])
-           (cond [(eq? type '/) (divide lval rval)]
-                 [else ((symbol-function type) lval rval)]))]
-        [(and) (and (_eval left) (_eval right))]
-        [(or) (or (_eval left) (_eval right))]
-        [(=) (eval-assign a)]))
+      (let* ([tok   (node-token a)]
+             [left  (expr:binary-left a)]
+             [right (expr:binary-right a)]
+             [type  (empty-token-type tok)])
+        (case type
+          [(+ - * / < <= > >= == !=)
+           (let* ([msg (format "Operands of '~a' must be number." type)]
+                  [lval (check number? (_eval left) msg)]
+                  [rval (check number? (_eval right) msg)])
+             (cond [(eq? type '/) (divide lval rval)]
+                   [else ((symbol-function type) lval rval)]))]
+          [(and) (and (_eval left) (_eval right))]
+          [(or) (or (_eval left) (_eval right))])))
 
-    (define/private (call fn args)
-      (let ([_env (new env% [outer (function-env fn)])]
-            [last env])
+    (define/private (call/fn fn args)
+      (let ([_env  (new env% [outer (function-env fn)])]
+            [last  env]
+            [arity (length (function-parameters fn))]
+            [return-val (void)])
+        (when (not (= arity (length args)))
+          (runtime-error "Expect ~a arguments, got ~a." arity (length args)))
         (for ([i (function-parameters fn)]
               [j args])
           (send _env defvar i j))
         (set! env _env)
         (with-handlers
-            ([return-exn? (λ (e) (begin0 (cadr e) (set! env last)))])
-          (eval-block (function-body fn))
-          (set! env last))))
+            ([return-exn? (λ (e) (set! return-val (cadr e)))])
+          (eval-block (function-body fn)))
+        (set! env last)
+        return-val))
+
+    (define/private (call/new klass args)
+      (let ([init #f] [ins (loxInstance "" klass (make-hash))])
+        (cond [(class-has? klass 'init) 
+               (set! init (bind/this ins (class-get klass 'init)))
+               (set! constructor? #t)
+               (call/fn init args)
+               (set! constructor? #f)]
+              [(not (zero? (length args))) (runtime-error "Expect ~a arguments, got ~a." 0 (length args))])
+        ins))
       
     (define/private (eval-call a)
-      (define callee (_eval (expr:call-callee a)))
-      (define num_a (length (expr:call-args a)))
-      (define num_p 0)
-      (unless (function? callee)
-        (runtime-error "Expect callable object before '('."))
-      (set! num_p (length (function-parameters callee)))
+      (let ([callee (_eval (expr:call-callee a))]
+            [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
+        (cond [(function? callee) (call/fn callee args)]
+              [(loxClass? callee) (call/new callee args)]
+              [else (runtime-error "Expect callable object before '('.")])))
 
-      (when (not (= num_a num_p))
-        (runtime-error (format "Expect ~a arguments, got ~a." num_p num_a)))
-      
-      (call callee (for/list ([arg (expr:call-args a)]) (_eval arg))))
+    (define/private (bind/this ins fn)
+      (let* ([env (function-env fn)]
+             [new_env (new env% [outer env])]
+             [name (function-name fn)]
+             [parameters (function-parameters fn)]
+             [body (function-body fn)])
+        (send new_env defvar "this" ins)
+        (function name parameters body new_env)))
+        
+    (define/private (eval-get a)
+      (let ([receiver (_eval (expr:get-receiver a))]
+            [field    (token-value (node-token a))])
+        (unless (loxInstance? receiver)
+          (runtime-error "Only instances have properties."))
+        (cond [(instance-has? receiver field) (instance-get receiver field)]
+              [(class-has? receiver field) (bind/this receiver (class-get receiver field))]
+              [else (runtime-error (format "Undefined Property '~a'." field))])))
+
+    (define/private (eval-set a)
+      (let ([receiver (_eval (expr:set-receiver a))]
+            [field    (token-value (node-token a))]
+            [value    (_eval (expr:set-expr a))])
+        (unless (loxInstance? receiver)
+          (runtime-error "Only instances have properties."))
+        (instance-set receiver field value)))
+
+    (define/private (eval-this a)
+      (send env get "this"))
     
     (define/private (eval-assign a)
-      (let* ([left (expr:binary-left a)]
-             [name (token-value left)]
-             [right (expr:binary-right a)]
-             [value (_eval right)])
+      (let ([name  (token-value (node-token a))]
+            [value (_eval (expr:assign-expr a))])
         (send env assign name value)
         value))
 
@@ -87,7 +119,7 @@
     (define/private (eval-print a)
       (displayln (_eval (stat:print-expr a))))
 
-    (define/private (eval-varDecl a)
+    (define/private (eval-var a)
       (let ([name (token-value (node-token a))]
             [init (stat:var-init a)])
         (unless (nil? init)
@@ -98,13 +130,13 @@
       (send env get (token-value a)))
 
     (define/private (eval-block a)
-      (define ne (new env% [outer env]))
-      (define previous env)
-      (set! env ne)
-      (with-handlers
-          ([user-exn-catched? (λ (e) (print-user-error e) (set! env previous))])
-        (for ([stat (stat:block-slist a)])
-          (_eval stat))
+      (let ([new_env (new env% [outer env])]
+            [previous env])
+        (set! env new_env)
+        (with-handlers
+            ([user-exn-catched? (λ (e) (print-user-error e))])
+          (for ([stat (stat:block-slist a)])
+            (_eval stat)))
         (set! env previous)))
 
     (define/private (eval-if a)
@@ -138,7 +170,21 @@
             [body (stat:fun-body a)])
         (send env defvar name (function name pars body (new env% [outer env])))))
 
+    (define/private (eval-class a)
+      (let ([name (token-value (node-token a))]
+            [methods (stat:class-methods a)]
+            [memory (make-hash)])
+        (for ([i methods])
+          (let* ([_name (stat:fun-name i)]
+                 [pars (stat:fun-parameters i)]
+                 [body (stat:fun-body i)]
+                 [fn   (function _name pars body env)])
+            (hash-set! memory _name fn)))
+        (send env defvar name (loxClass name memory))))
+
     (define/private (eval-return a)
+      (when constructor?
+        (runtime-error "Cannot return value from a constructor."))
       (let ([val (_eval (stat:return-expr a))])
         (raise `(return ,val))))
 
@@ -146,16 +192,21 @@
       (cond [(expr:unary? a)  (eval-unary a)]
             [(expr:binary? a) (eval-binary a)]
             [(expr:call? a)   (eval-call a)]
+            [(expr:assign? a) (eval-assign a)]
+            [(expr:get? a)    (eval-get a)]
+            [(expr:set? a)    (eval-set a)]
+            [(expr:this? a)   (eval-this a)]
             [(stat:stats? a)  (eval-stats a)]
             [(stat:print? a)  (eval-print a)]
             [(stat:expr? a)   (_eval (stat:expr-expr a))]
-            [(stat:var? a)    (eval-varDecl a)]
+            [(stat:var? a)    (eval-var a)]
             [(stat:block? a)  (eval-block a)]
             [(stat:if? a)     (eval-if a)]
             [(stat:while? a)  (eval-while a)]
             [(stat:for? a)    (eval-for a)]
             [(stat:fun? a)    (eval-fun a)]
             [(stat:return? a) (eval-return a)]
+            [(stat:class? a)  (eval-class a)]
             [else (case (empty-token-type a)
                     [(number string) (token-value a)]
                     [(true)  #t]

@@ -12,7 +12,7 @@
 
     (define/public (defvar name value)
       (when (and (not (nil? outer)) (has-declared? name))
-        (runtime-error (format "Variable '~a' has already declared in this scope." name)))
+        (runtime-error "Variable '~a' has already declared in this scope." name))
       (hash-set! symtab name value))
 
     (define/public (getvar name)
@@ -29,7 +29,7 @@
            (if (send cur has-declared? name)
                (return cur)
                (set! cur (get-field outer cur))))
-         (runtime-error (format "Undefined variable '~a'." name)))))
+         (runtime-error "Undefined variable '~a'." name))))
 
     (define/public (assign name value)
       (let ([e (_get name)])
