@@ -30,7 +30,7 @@
 (struct stat:block   node [slist])
 (struct stat:if      node [condition if-arm then-arm])
 (struct stat:while   node [condition body])
-(struct stat:for     node [init condition step body])
+(struct stat:for     node [init condition increment body])
 (struct stat:fun     node [name parameters body])
 (struct stat:return  node [expr])
 (struct stat:class   node [methods])
@@ -51,8 +51,31 @@
          (loop))))))
 
 (define (divide a b)
-  (cond [(zero? b) ((if (< a 0) - +) +inf.0)]
+  (cond [(zero? b) (/ (exact->inexact a) (exact->inexact b))]
         [else (/ a b)]))
+
+(define (plus a b)
+  (cond [(and (number? a) (number? b)) (+ a b)]
+        [(and (string? a) (string? b)) (string-append a b)]
+        [else (runtime-error "Operands of '+' must be two numbers or two strings.")]))
+
+(define (truthy? a)
+  (and (not (nil? a)) a))
+
+(define (falsy? a)
+  (not (truthy? a)))
+
+(define (stringify a)
+  (let* ([s (number->string a)]
+         [n (string-length s)])
+    (if (and (> n 2) (string=? (substring s (- n 2) n) ".0"))
+        (substring s 0 (- n 2))
+        s)))
+
+(define (member? a l)
+  (cond [(null? l) #f]
+        [(equal? a (car l)) #t]
+        [else (member? a (cdr l))]))
 
 (define (char-to-symbol c)
   (string->symbol (string c)))

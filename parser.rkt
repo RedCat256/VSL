@@ -196,7 +196,7 @@
     (define/private (unary)
       (let ([type (empty-token-type cur)])
         (case type
-          [(+ - !) (next) (expr:unary prev (parse-prec 120))]
+          [(- !) (next) (expr:unary prev (parse-prec 120))]
           [(number id string true false nil) (next) prev]
           [(|(|) (next) (begin0 (expr) (consume '|)| "Expect ')' for grouping"))]
           [(this) (cond [inClass (next) (expr:this prev)]

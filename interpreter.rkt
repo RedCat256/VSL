@@ -4,16 +4,15 @@
 
 (provide interpreter%)
 
+
+
 (define interpreter%
   (class object%
     (super-new)
 
     (define constructor? #f)
-
     (define env (new env% [outer nil]))
-
-    (define binary-ops (list `(+ ,+) `(- ,-) `(* ,*) `(/ ,/) `(< ,<) `(<= , <=)
-                             `(> ,>) `(>= ,>=) `(== ,=) `(!= ,(λ (x y) (not (= x y))))))
+    (define binary-ops `((- ,-) (* ,*) (/ ,divide) (< ,<) (<= ,<=) (> ,>) (>= ,>=)))
 
     (define/private (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
@@ -21,27 +20,28 @@
 
     (define/private (eval-unary a)
       (case (empty-token-type (node-token a))
-        [(+) (+ (_eval (expr:unary-expr a)))]
-        [(-) (- (_eval (expr:unary-expr a)))]
-        [(!) (not (_eval (expr:unary-expr a)))]))
-
-    (define/private (check p val msg)
-      (if (p val) val (runtime-error msg)))
+        [(-) (let ([v (_eval (expr:unary-expr a))])
+               (if (number? v)
+                   (- v)
+                   (runtime-error "Operand of '-' must be number.")))]
+        [(!) (falsy? (_eval (expr:unary-expr a)))]))
 
     (define/private (eval-binary a)
-      (let* ([tok   (node-token a)]
-             [left  (expr:binary-left a)]
-             [right (expr:binary-right a)]
-             [type  (empty-token-type tok)])
-        (case type
-          [(+ - * / < <= > >= == !=)
-           (let* ([msg (format "Operands of '~a' must be number." type)]
-                  [lval (check number? (_eval left) msg)]
-                  [rval (check number? (_eval right) msg)])
-             (cond [(eq? type '/) (divide lval rval)]
-                   [else ((symbol-function type) lval rval)]))]
-          [(and) (and (_eval left) (_eval right))]
-          [(or) (or (_eval left) (_eval right))])))
+      (let ([type  (empty-token-type (node-token a))]
+            [left  (expr:binary-left a)]
+            [right (expr:binary-right a)])
+        (cond [(eq? type 'and) (and (truthy? (_eval left)) (_eval right))]
+              [(eq? type 'or)  (or  (falsy?  (_eval left)) (_eval right))]
+              [else
+               (let ([lval  (_eval left)] [rval  (_eval right)])
+                 (case type
+                   [(- * / < <= > >=)
+                    (unless (and (number? lval) (number? rval))
+                      (runtime-error "Operands of '~a' must be two numbers." type))
+                    ((symbol-function type) lval rval)]
+                   [(==) (equal? lval rval)]
+                   [(!=) (not (equal? lval rval))]
+                   [(+)  (plus lval rval)]))])))
 
     (define/private (call/fn fn args)
       (let ([_env  (new env% [outer (loxFunction-env fn)])]
@@ -119,8 +119,8 @@
         (_eval stat)))
 
     (define/private (tostr val)
-      (cond [(or (integer? val) (string? val)) val]
-            [(number? val) (exact->inexact val)]
+      (cond [(string? val) val]
+            [(number? val) (stringify (exact->inexact val))]
             [(eq? #t val)  "true"]
             [(eq? #f val)  "false"]
             [(nil? val)    "nil"]
@@ -156,7 +156,7 @@
       (let ([condition (stat:if-condition a)]
             [if-arm (stat:if-if-arm a)]
             [then-arm (stat:if-then-arm a)])
-        (if (_eval condition)
+        (if (truthy? (_eval condition))
             (_eval if-arm)
             (when then-arm
               (_eval then-arm)))))
@@ -164,18 +164,23 @@
     (define/private (eval-while a)
       (let ([condition (stat:while-condition a)]
             [body (stat:while-body a)])
-        (while (_eval condition)
+        (while (truthy? (_eval condition))
           (_eval body))))
 
     (define/private (eval-for a)
-      (let ([init (stat:for-init a)]
+      (let ([init      (stat:for-init a)]
             [condition (stat:for-condition a)]
-            [step (stat:for-step a)]
-            [body (stat:for-body a)])
+            [increment (stat:for-increment a)]
+            [body      (stat:for-body a)])
         (when init (_eval init))
-        (while (_eval condition)
-          (_eval body)
-          (_eval step))))
+        (cond [(eq? condition #f)
+               (while #t
+                 (_eval body)
+                 (when increment (_eval increment)))]
+              [else 
+               (while (truthy? (_eval condition))
+                 (_eval body)
+                 (when increment (_eval increment)))])))
 
     (define/private (eval-fun a)
       (let ([name (stat:fun-name a)]
