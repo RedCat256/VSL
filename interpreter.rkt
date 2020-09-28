@@ -61,7 +61,9 @@
         return-val))
 
     (define/private (call/new klass args)
-      (let ([init #f] [ins (loxInstance "" klass (make-hash))])
+      (let* ([init #f]
+             [name (format "~a instance" (loxClass-name klass))]
+            [ins (loxInstance name  klass (make-hash))])
         (cond [(class-has? klass 'init) 
                (set! init (bind/this ins (class-get klass 'init)))
                (set! constructor? #t)
@@ -116,9 +118,20 @@
       (for ([stat (stat:stats-slist a)])
         (_eval stat)))
 
-    (define/private (eval-print a)
-      (displayln (_eval (stat:print-expr a))))
+    (define/private (tostr val)
+      (cond [(or (integer? val) (string? val)) val]
+            [(number? val) (exact->inexact val)]
+            [(eq? #t val) "true"]
+            [(eq? #f val) "false"]
+            [(nil? val)    "nil"]
+            [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
+            [(loxInstance? val) (loxInstance-name val)]
+            [(loxClass? val)    (loxClass-name val)]
+            [else "Unknown data type"]))
 
+    (define/private (eval-print a)
+      (displayln (tostr (_eval (stat:print-expr a)))))
+    
     (define/private (eval-var a)
       (let ([name (token-value (node-token a))]
             [init (stat:var-init a)])
