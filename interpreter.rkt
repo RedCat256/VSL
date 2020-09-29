@@ -138,9 +138,9 @@
         (send env assign name value)
         value))
 
-    (define/private (eval-stats a)
-      (for ([stat (stat:stats-slist a)])
-        (_eval stat)))
+    (define/private (eval-stmts a)
+      (for ([stmt (stmt:stmts-slist a)])
+        (_eval stmt)))
 
     (define/private (tostr val)
       (cond [(string? val) val]
@@ -154,11 +154,11 @@
             [else "Unknown data type"]))
 
     (define/private (eval-print a)
-      (displayln (tostr (_eval (stat:print-expr a)))))
+      (displayln (tostr (_eval (stmt:print-expr a)))))
     
     (define/private (eval-var a)
       (let ([name (token-value (node-token a))]
-            [init (stat:var-init a)])
+            [init (stmt:var-init a)])
         (unless (nil? init)
           (set! init (_eval init)))
         (send env defvar name init)))
@@ -172,31 +172,31 @@
         (set! env new_env)
         (with-handlers
             ([user-exn-catched? (λ (e) (print-user-error e))])
-          (for ([stat (stat:block-slist a)])
-            (_eval stat)))
+          (for ([stmt (stmt:block-slist a)])
+            (_eval stmt)))
         (set! env previous)))
 
     (define/private (eval-if a)
-      (let ([condition (stat:if-condition a)]
-            [if-arm (stat:if-if-arm a)]
-            [then-arm (stat:if-then-arm a)])
+      (let ([condition (stmt:if-condition a)]
+            [if-arm (stmt:if-if-arm a)]
+            [then-arm (stmt:if-then-arm a)])
         (if (truthy? (_eval condition))
             (_eval if-arm)
             (when then-arm
               (_eval then-arm)))))
 
     (define/private (eval-while a)
-      (let ([condition (stat:while-condition a)]
-            [body (stat:while-body a)])
+      (let ([condition (stmt:while-condition a)]
+            [body (stmt:while-body a)])
         (with-handlers ([break-exn? (λ (e) nil)])
           (while (truthy? (_eval condition))
             (_eval body)))))
 
     (define/private (eval-for a)
-      (let ([init      (stat:for-init a)]
-            [condition (stat:for-condition a)]
-            [increment (stat:for-increment a)]
-            [body      (stat:for-body a)])
+      (let ([init      (stmt:for-init a)]
+            [condition (stmt:for-condition a)]
+            [increment (stmt:for-increment a)]
+            [body      (stmt:for-body a)])
         (when init (_eval init))
         (with-handlers ([break-exn? (λ (e) nil)])
           (cond [(eq? condition #f)
@@ -209,19 +209,19 @@
                    (when increment (_eval increment)))]))))
 
     (define/private (eval-fun a)
-      (let ([name (stat:fun-name a)]
-            [pars (stat:fun-parameters a)]
-            [body (stat:fun-body a)])
+      (let ([name (stmt:fun-name a)]
+            [pars (stmt:fun-parameters a)]
+            [body (stmt:fun-body a)])
         (send env defvar name (loxFunction name pars body env))))
 
     (define/private (eval-class a)
       (let ([name (token-value (node-token a))]
-            [methods (stat:class-methods a)]
+            [methods (stmt:class-methods a)]
             [memory (make-hash)]
             [super-class nil]
             [super-class-name nil])
-        (unless (nil? (stat:class-super-class a))
-          (set! super-class-name (token-value (stat:class-super-class a)))
+        (unless (nil? (stmt:class-super-class a))
+          (set! super-class-name (token-value (stmt:class-super-class a)))
           
           (when (eq? name super-class-name)
             (runtime-error "A class cannot inherit from itself."))
@@ -231,9 +231,9 @@
             (runtime-error "Superclass must be a class.")))
                       
         (for ([i methods])
-          (let* ([_name (stat:fun-name i)]
-                 [pars (stat:fun-parameters i)]
-                 [body (stat:fun-body i)]
+          (let* ([_name (stmt:fun-name i)]
+                 [pars (stmt:fun-parameters i)]
+                 [body (stmt:fun-body i)]
                  [fn   (loxFunction _name pars body env)])
             (hash-set! memory _name fn)))
         (send env defvar name (loxClass name super-class memory))))
@@ -241,7 +241,7 @@
     (define/private (eval-return a)
       (when constructor?
         (runtime-error "Cannot return value from a constructor."))
-      (let ([exp (stat:return-expr a)])
+      (let ([exp (stmt:return-expr a)])
         (when (not (nil? exp))
           (set! exp (_eval exp)))
         (raise `(return ,exp))))
@@ -258,18 +258,18 @@
             [(expr:set? a)    (eval-set a)]
             [(expr:this? a)   (eval-this a)]
             [(expr:super? a)  (eval-super a)]
-            [(stat:stats? a)  (eval-stats a)]
-            [(stat:print? a)  (eval-print a)]
-            [(stat:expr? a)   (_eval (stat:expr-expr a))]
-            [(stat:var? a)    (eval-var a)]
-            [(stat:block? a)  (eval-block a)]
-            [(stat:if? a)     (eval-if a)]
-            [(stat:while? a)  (eval-while a)]
-            [(stat:for? a)    (eval-for a)]
-            [(stat:fun? a)    (eval-fun a)]
-            [(stat:return? a) (eval-return a)]
-            [(stat:break? a)  (eval-break a)]
-            [(stat:class? a)  (eval-class a)]
+            [(stmt:stmts? a)  (eval-stmts a)]
+            [(stmt:print? a)  (eval-print a)]
+            [(stmt:expr? a)   (_eval (stmt:expr-expr a))]
+            [(stmt:var? a)    (eval-var a)]
+            [(stmt:block? a)  (eval-block a)]
+            [(stmt:if? a)     (eval-if a)]
+            [(stmt:while? a)  (eval-while a)]
+            [(stmt:for? a)    (eval-for a)]
+            [(stmt:fun? a)    (eval-fun a)]
+            [(stmt:return? a) (eval-return a)]
+            [(stmt:break? a)  (eval-break a)]
+            [(stmt:class? a)  (eval-class a)]
             [else (case (empty-token-type a)
                     [(number string) (token-value a)]
                     [(true)  #t]

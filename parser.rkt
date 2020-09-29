@@ -58,18 +58,18 @@
              [(class fun var for if while print return) (return nil)])
            (next)))))
 
-    (define/public (stats)
+    (define/public (stmts)
       (let ([sts '()]
             [line (empty-token-line prev)])
         (while (not-at-end?)
           (set! sts (cons (declaration) sts)))
-        (stat:stats (empty-token 'sts line) (reverse sts))))
+        (stmt:stmts (empty-token 'sts line) (reverse sts))))
 
     (define/private (declaration)
       (cond [(_match 'var)   (var)]
             [(_match 'fun)   (fun "function")]
             [(_match 'class) (_class)]
-            [else (stat)]))
+            [else (stmt)]))
 
     (define/private (var)
       (let ([id cur]
@@ -78,7 +78,7 @@
         (when (_match '=)
           (set! initializer (expr)))
         (consume '|;| "Expect ';' after variable declaration.")
-        (stat:var id initializer)))
+        (stmt:var id initializer)))
 
     (define/private (fun kind)
       (let-values ([(tok id plist body) (values prev cur '() #f)])
@@ -95,11 +95,11 @@
         (set! plist (reverse plist))
         (consume '|)| "Expect ')' after parameters.")
         (consume '|{| (format "Expect '{' before ~a body." kind))
-        (set! body (block-stat))
+        (set! body (block-stmt))
       
         (set! depth (sub1 depth)) ; exit function/method
       
-        (stat:fun tok (token-value id) plist body)))
+        (stmt:fun tok (token-value id) plist body)))
 
     (define/private (_class)
       (let ([name cur] [methods '()] [superClass nil])
@@ -119,92 +119,92 @@
 
         (set! inClass #f) ; exit class
       
-        (stat:class name superClass (reverse methods))))
+        (stmt:class name superClass (reverse methods))))
 
-    (define/private (stat)
-      (cond [(_match 'print)  (print-stat)]
-            [(_match '|{|)    (block-stat)]
-            [(_match 'if)     (if-stat)]
-            [(_match 'while)  (while-stat)]
-            [(_match 'for)    (for-stat)]
-            [(_match 'return) (return-stat)]
-            [(_match 'break)  (break-stat)]
-            [else             (expr-stat)]))
+    (define/private (stmt)
+      (cond [(_match 'print)  (print-stmt)]
+            [(_match '|{|)    (block-stmt)]
+            [(_match 'if)     (if-stmt)]
+            [(_match 'while)  (while-stmt)]
+            [(_match 'for)    (for-stmt)]
+            [(_match 'return) (return-stmt)]
+            [(_match 'break)  (break-stmt)]
+            [else             (expr-stmt)]))
 
-    (define/private (print-stat)
+    (define/private (print-stmt)
       (let ([tok prev]
             [e (expr)])
         (consume '|;| "Expect ';' after value.")
-        (stat:print tok e)))
+        (stmt:print tok e)))
 
-    (define/private (block-stat)
+    (define/private (block-stmt)
       (let ([sts '()]
             [tok prev])
         (while (and (not (check '|}|)) (not-at-end?))
           (set! sts (cons (declaration) sts)))
         (consume '|}| "Expect '}' after block.")
-        (stat:block tok (reverse sts))))
+        (stmt:block tok (reverse sts))))
 
-    (define/private (if-stat)
+    (define/private (if-stmt)
       (let-values ([(tok condition if-arm then-arm)
                     (values prev #f #f #f)])
         (consume '|(| "Expect '(' after if.")
         (set! condition (expr))
         (consume '|)| "Expect ')' after if condition.")
-        (set! if-arm (stat))
+        (set! if-arm (stmt))
         (when (_match 'else)
-          (set! then-arm (stat)))
-        (stat:if tok condition if-arm then-arm)))
+          (set! then-arm (stmt)))
+        (stmt:if tok condition if-arm then-arm)))
 
-    (define/private (while-stat)
+    (define/private (while-stmt)
       (let-values ([(tok condition body) (values prev #f #f)])
         (incf loop-depth)
         (consume '|(| "Expect '(' after while.")
         (set! condition (expr))
         (consume '|)| "Expect ')' after while condition.")
-        (set! body (stat))
+        (set! body (stmt))
         (incf loop-depth -1)
-        (stat:while tok condition body)))
+        (stmt:while tok condition body)))
 
-    (define/private (for-stat)
+    (define/private (for-stmt)
       (let-values ([(tok init condition increment body)
                     (values prev #f #f #f #f)])
         (incf loop-depth)
         (consume '|(| "Expect '(' after for.")
         (cond [(_match 'var) (set! init (var))]
               [(_match '|;|) (set! init #f)]
-              [else (set! init (expr-stat))])
+              [else (set! init (expr-stmt))])
         (unless (check '|;|)
           (set! condition (expr)))
         (consume '|;| "Expect ';' after loop condition.")
         (unless (check '|)|)
           (set! increment (expr)))
         (consume '|)| "Expect ')' after for clauses.")
-        (set! body (stat))
+        (set! body (stmt))
         (incf loop-depth -1)
-        (stat:for tok init condition increment body)))
+        (stmt:for tok init condition increment body)))
 
-    (define/private (return-stat)
+    (define/private (return-stmt)
       (when (zero? depth)
         (parse-error "Cannot return from top level code."))
       (let ([tok prev] [val nil])
         (unless (check '|;|)
           (set! val (expr)))
         (consume '|;| "Expect ';' after return value.")
-        (stat:return tok val)))
+        (stmt:return tok val)))
 
-    (define/private (break-stat)
+    (define/private (break-stmt)
       (when (<= loop-depth 0)
         (parse-error "'break' statement outside of loop."))
       (let ([tok prev])
         (consume '|;| "Expect ';' after break.")
-        (stat:break tok)))
+        (stmt:break tok)))
       
-    (define/private (expr-stat)
+    (define/private (expr-stmt)
       (let ([tok cur]
             [e (expr)])
         (consume '|;| "Expect ';' after expression.")
-        (stat:expr tok e)))
+        (stmt:expr tok e)))
 
     (define/private (parse-prec prec)
       (let ([left (unary)])
