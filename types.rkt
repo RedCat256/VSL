@@ -34,6 +34,7 @@
 (struct stat:for     node [init condition increment body])
 (struct stat:fun     node [name parameters body])
 (struct stat:return  node [expr])
+(struct stat:break   node [])
 (struct stat:class   node [super-class methods])
 
 (struct loxFunction    [name parameters body env])
@@ -43,6 +44,7 @@
 (struct lex-exn     exn:fail:user ())
 (struct parse-exn   exn:fail:user ())
 (struct runtime-exn exn:fail:user ())
+(struct break-exn   [])
 
 (define-syntax while
   (syntax-rules ()
@@ -50,6 +52,11 @@
      (let loop ()
        (when predicate e ...
          (loop))))))
+
+(define-syntax incf
+  (syntax-rules ()
+    ((_ x n) (set! x (+ x n)))
+    ((_ x) (incf x 1))))
 
 (define (divide a b)
   (cond [(zero? b) (/ (exact->inexact a) (exact->inexact b))]

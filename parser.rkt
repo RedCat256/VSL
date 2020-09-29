@@ -13,7 +13,9 @@
            [cur (peek)]
            [prev cur]
            [depth 0]      ; 0 represents top level
-           [inClass #f])  ; in/out class
+           [inClass #f]   ; in/out class
+           [loop-depth 0] ; outside loop
+           )
     
     (define/private (peek)
       (if (>= pos (length tokens))
@@ -126,6 +128,7 @@
             [(_match 'while)  (while-stat)]
             [(_match 'for)    (for-stat)]
             [(_match 'return) (return-stat)]
+            [(_match 'break)  (break-stat)]
             [else             (expr-stat)]))
 
     (define/private (print-stat)
@@ -155,15 +158,18 @@
 
     (define/private (while-stat)
       (let-values ([(tok condition body) (values prev #f #f)])
+        (incf loop-depth)
         (consume '|(| "Expect '(' after while.")
         (set! condition (expr))
         (consume '|)| "Expect ')' after while condition.")
         (set! body (stat))
+        (incf loop-depth -1)
         (stat:while tok condition body)))
 
     (define/private (for-stat)
       (let-values ([(tok init condition increment body)
                     (values prev #f #f #f #f)])
+        (incf loop-depth)
         (consume '|(| "Expect '(' after for.")
         (cond [(_match 'var) (set! init (var))]
               [(_match '|;|) (set! init #f)]
@@ -175,6 +181,7 @@
           (set! increment (expr)))
         (consume '|)| "Expect ')' after for clauses.")
         (set! body (stat))
+        (incf loop-depth -1)
         (stat:for tok init condition increment body)))
 
     (define/private (return-stat)
@@ -184,6 +191,13 @@
         (set! val (expr))
         (consume '|;| "Expect ';' after return value.")
         (stat:return tok val)))
+
+    (define/private (break-stat)
+      (when (<= loop-depth 0)
+        (parse-error "'break' statement outside of loop."))
+      (let ([tok prev])
+        (consume '|;| "Expect ';' after break.")
+        (stat:break tok)))
       
     (define/private (expr-stat)
       (let ([tok cur]

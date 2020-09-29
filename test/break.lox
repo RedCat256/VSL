@@ -1,0 +1,39 @@
+
+for (var i = 1; ; i=i*2) {
+	if (i > 10)
+		break;
+	print i;
+	var j = 2;
+	for (; ;j=j+1) {
+		if (j == 4)
+			break;
+		print j;
+	}
+}
+
+var i;
+var j;
+var k;
+var m;
+var sum = 0;
+for (i = 1;; i = i+1) {
+	if (i == 3)
+		break;
+	
+	for (j = 1; ;j=j+1) {
+		if (j == 4)
+			break;
+		for (k=1;;k=k+1) {
+			if (k==5)
+				break;
+			for (m=1;;m=m+1) {
+				if (m==6)
+					break;
+				sum=sum+1;
+			}
+		}
+	}
+}
+
+print "number of loops: ";
+print sum;

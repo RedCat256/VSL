@@ -175,8 +175,9 @@
     (define/private (eval-while a)
       (let ([condition (stat:while-condition a)]
             [body (stat:while-body a)])
-        (while (truthy? (_eval condition))
-          (_eval body))))
+        (with-handlers ([break-exn? (λ (e) nil)])
+          (while (truthy? (_eval condition))
+            (_eval body)))))
 
     (define/private (eval-for a)
       (let ([init      (stat:for-init a)]
@@ -184,14 +185,15 @@
             [increment (stat:for-increment a)]
             [body      (stat:for-body a)])
         (when init (_eval init))
-        (cond [(eq? condition #f)
-               (while #t
-                 (_eval body)
-                 (when increment (_eval increment)))]
-              [else 
-               (while (truthy? (_eval condition))
-                 (_eval body)
-                 (when increment (_eval increment)))])))
+        (with-handlers ([break-exn? (λ (e) nil)])
+          (cond [(eq? condition #f)
+                 (while #t
+                   (_eval body)
+                   (when increment (_eval increment)))]
+                [else 
+                 (while (truthy? (_eval condition))
+                   (_eval body)
+                   (when increment (_eval increment)))]))))
 
     (define/private (eval-fun a)
       (let ([name (stat:fun-name a)]
@@ -229,6 +231,9 @@
       (let ([val (_eval (stat:return-expr a))])
         (raise `(return ,val))))
 
+    (define/private (eval-break a)
+      (raise (break-exn)))
+
     (define/public (_eval a)
       (cond [(expr:unary? a)  (eval-unary a)]
             [(expr:binary? a) (eval-binary a)]
@@ -248,6 +253,7 @@
             [(stat:for? a)    (eval-for a)]
             [(stat:fun? a)    (eval-fun a)]
             [(stat:return? a) (eval-return a)]
+            [(stat:break? a)  (eval-break a)]
             [(stat:class? a)  (eval-class a)]
             [else (case (empty-token-type a)
                     [(number string) (token-value a)]
