@@ -109,7 +109,7 @@
         (consume 'id "Expect class name.")
 
         (when (_match '<)
-          (consume 'id "Expect super class name.")
+          (consume 'id "Expect superclass name.")
           (set! superClass prev))
         
         (consume '|{| "Expect '{' after class name.")
@@ -225,7 +225,7 @@
                                   (consume 'id "Expect identifier after '.'")
                                   (expr:super prev)]
                          [else (parse-error "Cannot use 'super' out of class.")])]
-          [else (parse-error "Invalid unary operator '~a'" type)])))
+          [else (parse-error "Expect expression.")])))
 
     (define/private (arglist)
       (let ([alist '()])

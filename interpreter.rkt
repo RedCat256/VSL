@@ -24,12 +24,24 @@
                    (runtime-error "Operand of '-' must be number.")))]
         [(!) (falsy? (_eval (expr:unary-expr a)))]))
 
+    (define/private (_and left right)
+      (let ([val (_eval left)])
+        (if (truthy? val)
+            (_eval right)
+            val)))
+
+    (define/private (_or left right)
+      (let ([val (_eval left)])
+        (if (falsy? val)
+            (_eval right)
+            val)))
+          
     (define/private (eval-binary a)
       (let ([type  (empty-token-type (node-token a))]
             [left  (expr:binary-left a)]
             [right (expr:binary-right a)])
-        (cond [(eq? type 'and) (and (truthy? (_eval left)) (_eval right))]
-              [(eq? type 'or)  (or  (falsy?  (_eval left)) (_eval right))]
+        (cond [(eq? type 'and) (_and left right)]
+              [(eq? type 'or)  (_or  left right)]
               [else
                (let ([lval  (_eval left)] [rval  (_eval right)])
                  (case type
@@ -47,7 +59,7 @@
             [arity (length (loxFunction-parameters fn))]
             [return-val nil])
         (when (not (= arity (length args)))
-          (runtime-error "Expect ~a arguments, got ~a." arity (length args)))
+          (runtime-error "Expected ~a arguments but got ~a." arity (length args)))
         (for ([i (loxFunction-parameters fn)]
               [j args])
           (send _env defvar i j))
@@ -67,7 +79,7 @@
                (set! constructor? #t)
                (call/fn init args)
                (set! constructor? #f)]
-              [(not (zero? (length args))) (runtime-error "Expect ~a arguments, got ~a." 0 (length args))])
+              [(not (zero? (length args))) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
       
     (define/private (eval-call a)
@@ -75,7 +87,7 @@
             [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
         (cond [(loxFunction? callee) (call/fn callee args)]
               [(loxClass? callee) (call/new callee args)]
-              [else (runtime-error "Expect callable object before '('.")])))
+              [else (runtime-error "Can only call functions and classes.")])))
 
     (define/private (bind/this ins fn)
       (let* ([env (loxFunction-env fn)]
