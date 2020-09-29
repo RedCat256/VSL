@@ -185,10 +185,11 @@
         (stat:for tok init condition increment body)))
 
     (define/private (return-stat)
-      (let ([tok prev] [val #f])
-        (when (zero? depth)
-          (parse-error "Cannot return from top level code."))
-        (set! val (expr))
+      (when (zero? depth)
+        (parse-error "Cannot return from top level code."))
+      (let ([tok prev] [val nil])
+        (unless (check '|;|)
+          (set! val (expr)))
         (consume '|;| "Expect ';' after return value.")
         (stat:return tok val)))
 

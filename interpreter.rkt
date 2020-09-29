@@ -45,7 +45,7 @@
       (let ([_env  (new env% [outer (loxFunction-env fn)])]
             [last  env]
             [arity (length (loxFunction-parameters fn))]
-            [return-val (void)])
+            [return-val nil])
         (when (not (= arity (length args)))
           (runtime-error "Expect ~a arguments, got ~a." arity (length args)))
         (for ([i (loxFunction-parameters fn)]
@@ -228,8 +228,10 @@
     (define/private (eval-return a)
       (when constructor?
         (runtime-error "Cannot return value from a constructor."))
-      (let ([val (_eval (stat:return-expr a))])
-        (raise `(return ,val))))
+      (let ([exp (stat:return-expr a)])
+        (when (not (nil? exp))
+          (set! exp (_eval exp)))
+        (raise `(return ,exp))))
 
     (define/private (eval-break a)
       (raise (break-exn)))

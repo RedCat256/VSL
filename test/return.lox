@@ -1,0 +1,28 @@
+fun f() {
+	return 20;
+}
+print f(); // Expect 20
+
+fun g() {
+	return ;
+}
+print g(); // Expect nil
+
+fun h() {}
+print h(); // Expect nil
+
+
+//////////////error cases //////////////////////
+
+//return e1;  // return from top level 
+
+//{
+//	{
+//		return ; // return from top level
+//	}
+//}
+
+//for (;;)
+//	return ; // return from top level
+
+//////////////////////////////////////////////////
