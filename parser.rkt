@@ -218,7 +218,7 @@
         (case type
           [(- !) (next) (expr:unary prev (parse-prec 120))]
           [(number id string true false nil) (next) prev]
-          [(|(|) (next) (begin0 (expr) (consume '|)| "Expect ')' for grouping"))]
+          [(|(|) (next) (begin0 (expr:unary prev (expr)) (consume '|)| "Expect ')' for grouping"))]
           [(this)  (cond [inClass (next) (expr:this prev)]
                          [else (parse-error "Cannot use 'this' out of class.")])]
           [(super) (cond [inClass (next) (consume '|.| "Expect '.' after super.")

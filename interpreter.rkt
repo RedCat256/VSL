@@ -22,7 +22,8 @@
                (if (number? v)
                    (- v)
                    (runtime-error "Operand of '-' must be number.")))]
-        [(!) (falsy? (_eval (expr:unary-expr a)))]))
+        [(!) (falsy? (_eval (expr:unary-expr a)))]
+        [(|(|) (_eval (expr:unary-expr a))]))
 
     (define/private (_and left right)
       (let ([val (_eval left)])
