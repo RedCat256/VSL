@@ -16,7 +16,7 @@
       (let ([p (assoc sym binary-ops)])
         (if p (second p) #f)))
 
-    (define/private (eval-unary a)
+    (define/private (visit-unary a)
       (case (empty-token-type (node-token a))
         [(-) (let ([v (_eval (expr:unary-expr a))])
                (if (number? v)
@@ -37,7 +37,7 @@
             (_eval right)
             val)))
           
-    (define/private (eval-binary a)
+    (define/private (visit-binary a)
       (let ([type  (empty-token-type (node-token a))]
             [left  (expr:binary-left a)]
             [right (expr:binary-right a)])
@@ -67,7 +67,7 @@
         (set! env _env)
         (with-handlers
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
-          (eval-block (loxFunction-body fn)))
+          (visit-block (loxFunction-body fn)))
         (set! env last)
         return-val))
 
@@ -83,7 +83,7 @@
               [(not (zero? (length args))) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
       
-    (define/private (eval-call a)
+    (define/private (visit-call a)
       (let ([callee (_eval (expr:call-callee a))]
             [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
         (cond [(loxFunction? callee) (call/fn callee args)]
@@ -99,7 +99,7 @@
         (send new_env defvar "this" ins)
         (loxFunction name parameters body new_env)))
         
-    (define/private (eval-get a)
+    (define/private (visit-get a)
       (let ([receiver (_eval (expr:get-receiver a))]
             [field    (token-value (node-token a))]
             [fn #f])
@@ -109,7 +109,7 @@
               [(begin (set! fn (class-get receiver field)) fn) (bind/this receiver fn)]
               [else (runtime-error (format "Undefined Property '~a'." field))])))
 
-    (define/private (eval-set a)
+    (define/private (visit-set a)
       (let ([receiver (_eval (expr:set-receiver a))]
             [field    (token-value (node-token a))]
             [value    (_eval (expr:set-expr a))])
@@ -117,10 +117,10 @@
           (runtime-error "Only instances have properties."))
         (instance-set receiver field value)))
 
-    (define/private (eval-this a)
+    (define/private (visit-this a)
       (send env get "this"))
 
-    (define/private (eval-super a)
+    (define/private (visit-super a)
       (let* ([m_name (token-value (node-token a))]
              [_this  (send env get "this")]
              [super-class (loxClass-super-class (loxInstance-klass _this))])
@@ -132,13 +132,13 @@
           (set! method (bind/this _this method))
           method)))
     
-    (define/private (eval-assign a)
+    (define/private (visit-assign a)
       (let ([name  (token-value (node-token a))]
             [value (_eval (expr:assign-expr a))])
         (send env assign name value)
         value))
 
-    (define/private (eval-stmts a)
+    (define/private (visit-stmts a)
       (for ([stmt (stmt:stmts-slist a)])
         (_eval stmt)))
 
@@ -153,20 +153,20 @@
             [(loxClass? val)    (loxClass-name val)]
             [else "Unknown data type"]))
 
-    (define/private (eval-print a)
+    (define/private (visit-print a)
       (displayln (tostr (_eval (stmt:print-expr a)))))
     
-    (define/private (eval-var a)
+    (define/private (visit-var a)
       (let ([name (token-value (node-token a))]
             [init (stmt:var-init a)])
         (unless (nil? init)
           (set! init (_eval init)))
         (send env defvar name init)))
 
-    (define/private (eval-id a)
+    (define/private (visit-id a)
       (send env get (token-value a)))
 
-    (define/private (eval-block a)
+    (define/private (visit-block a)
       (let ([new_env (new env% [outer env])]
             [previous env])
         (set! env new_env)
@@ -176,7 +176,7 @@
             (_eval stmt)))
         (set! env previous)))
 
-    (define/private (eval-if a)
+    (define/private (visit-if a)
       (let ([condition (stmt:if-condition a)]
             [if-arm (stmt:if-if-arm a)]
             [then-arm (stmt:if-then-arm a)])
@@ -185,14 +185,14 @@
             (when then-arm
               (_eval then-arm)))))
 
-    (define/private (eval-while a)
+    (define/private (visit-while a)
       (let ([condition (stmt:while-condition a)]
             [body (stmt:while-body a)])
         (with-handlers ([break-exn? (λ (e) nil)])
           (while (truthy? (_eval condition))
             (_eval body)))))
 
-    (define/private (eval-for a)
+    (define/private (visit-for a)
       (let ([init      (stmt:for-init a)]
             [condition (stmt:for-condition a)]
             [increment (stmt:for-increment a)]
@@ -208,13 +208,13 @@
                    (_eval body)
                    (when increment (_eval increment)))]))))
 
-    (define/private (eval-fun a)
+    (define/private (visit-fun a)
       (let ([name (stmt:fun-name a)]
             [pars (stmt:fun-parameters a)]
             [body (stmt:fun-body a)])
         (send env defvar name (loxFunction name pars body env))))
 
-    (define/private (eval-class a)
+    (define/private (visit-class a)
       (let ([name (token-value (node-token a))]
             [methods (stmt:class-methods a)]
             [memory (make-hash)]
@@ -238,7 +238,7 @@
             (hash-set! memory _name fn)))
         (send env defvar name (loxClass name super-class memory))))
 
-    (define/private (eval-return a)
+    (define/private (visit-return a)
       (when constructor?
         (runtime-error "Cannot return value from a constructor."))
       (let ([exp (stmt:return-expr a)])
@@ -246,34 +246,34 @@
           (set! exp (_eval exp)))
         (raise `(return ,exp))))
 
-    (define/private (eval-break a)
+    (define/private (visit-break a)
       (raise (break-exn)))
 
     (define/public (_eval a)
-      (cond [(expr:unary? a)  (eval-unary a)]
-            [(expr:binary? a) (eval-binary a)]
-            [(expr:call? a)   (eval-call a)]
-            [(expr:assign? a) (eval-assign a)]
-            [(expr:get? a)    (eval-get a)]
-            [(expr:set? a)    (eval-set a)]
-            [(expr:this? a)   (eval-this a)]
-            [(expr:super? a)  (eval-super a)]
-            [(stmt:stmts? a)  (eval-stmts a)]
-            [(stmt:print? a)  (eval-print a)]
+      (cond [(expr:unary? a)  (visit-unary a)]
+            [(expr:binary? a) (visit-binary a)]
+            [(expr:call? a)   (visit-call a)]
+            [(expr:assign? a) (visit-assign a)]
+            [(expr:get? a)    (visit-get a)]
+            [(expr:set? a)    (visit-set a)]
+            [(expr:this? a)   (visit-this a)]
+            [(expr:super? a)  (visit-super a)]
+            [(stmt:stmts? a)  (visit-stmts a)]
+            [(stmt:print? a)  (visit-print a)]
             [(stmt:expr? a)   (_eval (stmt:expr-expr a))]
-            [(stmt:var? a)    (eval-var a)]
-            [(stmt:block? a)  (eval-block a)]
-            [(stmt:if? a)     (eval-if a)]
-            [(stmt:while? a)  (eval-while a)]
-            [(stmt:for? a)    (eval-for a)]
-            [(stmt:fun? a)    (eval-fun a)]
-            [(stmt:return? a) (eval-return a)]
-            [(stmt:break? a)  (eval-break a)]
-            [(stmt:class? a)  (eval-class a)]
+            [(stmt:var? a)    (visit-var a)]
+            [(stmt:block? a)  (visit-block a)]
+            [(stmt:if? a)     (visit-if a)]
+            [(stmt:while? a)  (visit-while a)]
+            [(stmt:for? a)    (visit-for a)]
+            [(stmt:fun? a)    (visit-fun a)]
+            [(stmt:return? a) (visit-return a)]
+            [(stmt:break? a)  (visit-break a)]
+            [(stmt:class? a)  (visit-class a)]
             [else (case (empty-token-type a)
                     [(number string) (token-value a)]
                     [(true)  #t]
                     [(false) #f]
                     [(nil)   nil]
-                    [(id)    (eval-id a)]
+                    [(id)    (visit-id a)]
                     [else    (void)])]))))
