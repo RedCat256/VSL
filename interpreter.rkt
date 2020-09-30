@@ -138,6 +138,7 @@
         (let ([method (class-get super-class m_name)])
           (unless method
             (runtime-error "Undefined property '~a'." m_name))
+          (set! method (bind/this _this method))
           method)))
     
     (define/private (visit-assign a)

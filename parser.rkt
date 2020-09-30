@@ -220,11 +220,11 @@
           [(number id string true false nil) (next) prev]
           [(|(|) (next) (begin0 (expr:unary prev (expr)) (consume '|)| "Expect ')' for grouping"))]
           [(this)  (cond [inClass (next) (expr:this prev)]
-                         [else (parse-error "Cannot use 'this' out of class.")])]
+                         [else (parse-error "Cannot use 'this' outside of a class.")])]
           [(super) (cond [inClass (next) (consume '|.| "Expect '.' after super.")
                                   (consume 'id "Expect identifier after '.'")
                                   (expr:super prev)]
-                         [else (parse-error "Cannot use 'super' out of class.")])]
+                         [else (parse-error "Cannot use 'super' outside of a class.")])]
           [else (parse-error "Expect expression.")])))
 
     (define/private (arglist)
