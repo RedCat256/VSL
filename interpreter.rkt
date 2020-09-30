@@ -74,7 +74,7 @@
     (define/private (call/new klass args)
       (let* ([init #f]
              [name (format "~a instance" (loxClass-name klass))]
-             [ins (loxInstance name  klass (make-hash))])
+             [ins  (loxInstance name  klass (make-hash))])
         (cond [(hash-has-key? (loxClass-methods klass) 'init) 
                (set! init (bind/this ins (hash-ref (loxClass-methods klass) 'init)))
                (set! constructor? #t)
@@ -161,6 +161,8 @@
             [init (stmt:var-init a)])
         (unless (nil? init)
           (set! init (_eval init)))
+        ;persitent environments [crafting interpreters/resolving-and-binding]
+        (set! env (new env% [outer env]))
         (send env defvar name init)))
 
     (define/private (visit-id a)
