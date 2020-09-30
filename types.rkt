@@ -7,8 +7,8 @@
     (super-new)))
 
 (define nil (new nil%))
-(define (nil? obj)
-  (eq? obj nil))
+(define (nil? obj) (eq? obj nil))
+(define (~nil? obj) (not (eq? obj nil)))
 
 (struct empty-token [type line])
 (struct token empty-token [value])
@@ -37,7 +37,7 @@
 (struct stmt:break   node [])
 (struct stmt:class   node [super-class methods])
 
-(struct loxFunction    [name parameters body env])
+(struct loxFunction    [name parameters body env type klass])
 (struct loxClass       [name super-class methods])
 (struct loxInstance    [name klass fields])
 
@@ -68,7 +68,7 @@
         [else (runtime-error "Operands of '+' must be two numbers or two strings.")]))
 
 (define (truthy? a)
-  (and (not (nil? a)) a))
+  (and (~nil? a) a))
 
 (define (falsy? a)
   (not (truthy? a)))
@@ -90,6 +90,12 @@
 
 (define (return-exn? l)
   (and (list? l) (eq? (car l) 'return)))
+
+(define (initializer? fn)
+  (eq? (loxFunction-type fn) 'init))
+
+(define (~= a b)
+  (not (= a b)))
 
 (define (mkerr exn)
   (λ x
@@ -124,7 +130,7 @@
 
     (call/cc
      (λ (return)
-       (while (not (nil? klass))
+       (while (~nil? klass)
          (set! fn (hash-ref (loxClass-methods klass) field #f))
          (when fn
            (return fn))

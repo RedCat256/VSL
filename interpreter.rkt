@@ -8,8 +8,9 @@
   (class object%
     (super-new)
 
-    (define constructor? #f)
+    (define cur-fun nil) ; current activation record
     (define env (new env% [outer nil]))
+    
     (define binary-ops `((- ,-) (* ,*) (/ ,divide) (< ,<) (<= ,<=) (> ,>) (>= ,>=)))
 
     (define/private (symbol-function sym)
@@ -54,20 +55,30 @@
                    [(!=) (not (equal? lval rval))]
                    [(+)  (plus lval rval)]))])))
 
+    (define/private (visit-block a)
+      (let ([prev env])
+        (set! env (new env% [outer env]))
+        (with-handlers
+            ([user-exn-catched? (λ (e) (set! env prev) (raise e))])
+          (for ([stmt (stmt:block-slist a)])
+            (_eval stmt))
+          (set! env prev))))
+
     (define/private (call/fn fn args)
       (let ([_env  (new env% [outer (loxFunction-env fn)])]
             [last  env]
             [arity (length (loxFunction-parameters fn))]
             [return-val nil])
-        (when (not (= arity (length args)))
+        (when (~= arity (length args))
           (runtime-error "Expected ~a arguments but got ~a." arity (length args)))
-        (for ([i (loxFunction-parameters fn)]
-              [j args])
+        (for ([i (loxFunction-parameters fn)] [j args])
           (send _env defvar i j))
         (set! env _env)
         (with-handlers
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
           (visit-block (loxFunction-body fn)))
+        (when (initializer? fn)
+          (set! return-val (send env get "this")))
         (set! env last)
         return-val))
 
@@ -75,29 +86,26 @@
       (let* ([init #f]
              [name (format "~a instance" (loxClass-name klass))]
              [ins  (loxInstance name  klass (make-hash))])
-        (cond [(hash-has-key? (loxClass-methods klass) 'init) 
+        (cond [(hash-has-key? (loxClass-methods klass) 'init)
                (set! init (bind/this ins (hash-ref (loxClass-methods klass) 'init)))
-               (set! constructor? #t)
-               (call/fn init args)
-               (set! constructor? #f)]
+               (set! cur-fun init)
+               (call/fn init args)]
               [(not (zero? (length args))) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
       
     (define/private (visit-call a)
       (let ([callee (_eval (expr:call-callee a))]
-            [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
-        (cond [(loxFunction? callee) (call/fn callee args)]
-              [(loxClass? callee) (call/new callee args)]
+            [args   (for/list ([_ (expr:call-args a)]) (_eval _))]
+            [pre-fn cur-fun])
+            (set! cur-fun callee)
+        (cond [(loxFunction? callee) (begin0 (call/fn callee args) (set! cur-fun pre-fn))]
+              [(loxClass? callee) (begin0 (call/new callee args) (set! cur-fun pre-fn))]
               [else (runtime-error "Can only call functions and classes.")])))
 
     (define/private (bind/this ins fn)
-      (let* ([env (loxFunction-env fn)]
-             [new_env (new env% [outer env])]
-             [name (loxFunction-name fn)]
-             [parameters (loxFunction-parameters fn)]
-             [body (loxFunction-body fn)])
-        (send new_env defvar "this" ins)
-        (loxFunction name parameters body new_env)))
+      (let ([env (new env% [outer (loxFunction-env fn)])])
+        (send env defvar "this" ins)
+        (struct-copy loxFunction fn [env env])))
         
     (define/private (visit-get a)
       (let ([receiver (_eval (expr:get-receiver a))]
@@ -114,8 +122,9 @@
             [field    (token-value (node-token a))]
             [value    (_eval (expr:set-expr a))])
         (unless (loxInstance? receiver)
-          (runtime-error "Only instances have properties."))
-        (instance-set receiver field value)))
+          (runtime-error "Only instances have fields."))
+        (instance-set receiver field value)
+        value))
 
     (define/private (visit-this a)
       (send env get "this"))
@@ -123,13 +132,12 @@
     (define/private (visit-super a)
       (let* ([m_name (token-value (node-token a))]
              [_this  (send env get "this")]
-             [super-class (loxClass-super-class (loxInstance-klass _this))])
+             [super-class (loxClass-super-class (loxFunction-klass cur-fun))])
         (when (nil? super-class)
           (runtime-error "Cannot use 'super' in a class without superclass."))
         (let ([method (class-get super-class m_name)])
           (unless method
             (runtime-error "Undefined property '~a'." m_name))
-          (set! method (bind/this _this method))
           method)))
     
     (define/private (visit-assign a)
@@ -168,16 +176,6 @@
     (define/private (visit-id a)
       (send env get (token-value a)))
 
-    (define/private (visit-block a)
-      (let ([new_env (new env% [outer env])]
-            [previous env])
-        (set! env new_env)
-        (with-handlers
-            ([user-exn-catched? (λ (e) (print-user-error e))])
-          (for ([stmt (stmt:block-slist a)])
-            (_eval stmt)))
-        (set! env previous)))
-
     (define/private (visit-if a)
       (let ([condition (stmt:if-condition a)]
             [if-arm (stmt:if-if-arm a)]
@@ -213,15 +211,18 @@
     (define/private (visit-fun a)
       (let ([name (stmt:fun-name a)]
             [pars (stmt:fun-parameters a)]
-            [body (stmt:fun-body a)])
-        (send env defvar name (loxFunction name pars body env))))
+            [body (stmt:fun-body a)]
+            [klass nil])
+        (when (~nil? cur-fun)
+          (set! klass (loxFunction-klass cur-fun)))
+        (send env defvar name (loxFunction name pars body env 'fun klass))))
 
     (define/private (visit-class a)
       (let ([name (token-value (node-token a))]
-            [methods (stmt:class-methods a)]
-            [memory (make-hash)]
+            [methods (make-hash)]
             [super-class nil]
-            [super-class-name nil])
+            [super-class-name nil]
+            [klass nil])
         (unless (nil? (stmt:class-super-class a))
           (set! super-class-name (token-value (stmt:class-super-class a)))
           
@@ -231,21 +232,25 @@
           (set! super-class (send env get super-class-name))
           (unless (loxClass? super-class)
             (runtime-error "Superclass must be a class.")))
-                      
-        (for ([i methods])
+
+        (set! klass (loxClass name super-class methods))
+        ; create methods
+        (for ([i (stmt:class-methods a)])
           (let* ([_name (stmt:fun-name i)]
                  [pars (stmt:fun-parameters i)]
                  [body (stmt:fun-body i)]
-                 [fn   (loxFunction _name pars body env)])
-            (hash-set! memory _name fn)))
-        (send env defvar name (loxClass name super-class memory))))
+                 [fn   (loxFunction _name pars body env 'method klass)])
+            (when (eq? _name 'init)
+              (set! fn (loxFunction _name pars body env 'init klass)))
+            (hash-set! methods _name fn)))
+        (send env defvar name klass)))
 
     (define/private (visit-return a)
-      (when constructor?
-        (runtime-error "Cannot return value from a constructor."))
       (let ([exp (stmt:return-expr a)])
-        (when (not (nil? exp))
-          (set! exp (_eval exp)))
+        (when (~nil? exp)
+          (if (initializer? cur-fun)
+              (runtime-error "Cannot return a value from an initializer.")
+              (set! exp (_eval exp))))
         (raise `(return ,exp))))
 
     (define/private (visit-break a)
