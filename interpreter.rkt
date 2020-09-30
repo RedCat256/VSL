@@ -1,6 +1,7 @@
 #lang racket
 (require "types.rkt")
 (require "env.rkt")
+(require "runtime/system.rkt")
 
 (provide interpreter%)
 
@@ -12,6 +13,9 @@
     (define env (new env% [outer nil]))
     
     (define binary-ops `((- ,-) (* ,*) (/ ,divide) (< ,<) (<= ,<=) (> ,>) (>= ,>=)))
+
+    (for ([native system-natives])
+      (send env defvar (loxNative-name native) native))
 
     (define/private (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
@@ -68,18 +72,21 @@
       (let ([_env  (new env% [outer (loxFunction-env fn)])]
             [last  env]
             [arity (length (loxFunction-parameters fn))]
-            [return-val nil])
+            [return-val nil]
+            [prev-fun cur-fun])
         (when (~= arity (length args))
           (runtime-error "Expected ~a arguments but got ~a." arity (length args)))
         (for ([i (loxFunction-parameters fn)] [j args])
           (send _env defvar i j))
         (set! env _env)
+        (set! cur-fun fn)
         (with-handlers
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
           (visit-block (loxFunction-body fn)))
         (when (initializer? fn)
           (set! return-val (send env get "this")))
         (set! env last)
+        (set! cur-fun prev-fun)
         return-val))
 
     (define/private (call/new klass args)
@@ -88,18 +95,21 @@
              [ins  (loxInstance name  klass (make-hash))])
         (cond [(hash-has-key? (loxClass-methods klass) 'init)
                (set! init (bind/this ins (hash-ref (loxClass-methods klass) 'init)))
-               (set! cur-fun init)
                (call/fn init args)]
               [(not (zero? (length args))) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
+
+    (define/private (call/native callee args)
+      (if (~= (loxNative-arity callee) (length args))
+        (runtime-error "Expected ~a arguments but got ~a." (loxNative-arity callee) (length args))
+        (apply (loxNative-fn callee) args)))
       
     (define/private (visit-call a)
       (let ([callee (_eval (expr:call-callee a))]
-            [args   (for/list ([_ (expr:call-args a)]) (_eval _))]
-            [pre-fn cur-fun])
-            (set! cur-fun callee)
-        (cond [(loxFunction? callee) (begin0 (call/fn callee args) (set! cur-fun pre-fn))]
-              [(loxClass? callee) (begin0 (call/new callee args) (set! cur-fun pre-fn))]
+            [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
+        (cond [(loxFunction? callee) (call/fn callee args)]
+              [(loxClass? callee) (call/new callee args)]
+              [(loxNative? callee) (call/native callee args)]
               [else (runtime-error "Can only call functions and classes.")])))
 
     (define/private (bind/this ins fn)

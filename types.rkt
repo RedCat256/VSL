@@ -40,6 +40,7 @@
 (struct loxFunction    [name parameters body env type klass])
 (struct loxClass       [name super-class methods])
 (struct loxInstance    [name klass fields])
+(struct loxNative      [name arity fn])
 
 (struct lex-exn     exn:fail:user ())
 (struct parse-exn   exn:fail:user ())
