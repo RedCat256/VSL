@@ -24,7 +24,7 @@
 
     (define/private (next)
       (set! prev cur)
-      (set! pos (add1 pos))
+      (incf pos)
       (set! cur (peek)))
 
     (define/private (consume type msg)
@@ -83,7 +83,7 @@
     (define/private (fun kind)
       (let-values ([(tok id plist body) (values prev cur '() #f)])
       
-        (set! depth (add1 depth)) ; enter function/method
+        (incf depth) ; enter function/method
       
         (consume 'id (format "Expect ~a name." kind))
         (consume '|(| (format "Expect '(' after ~a name." kind))
@@ -97,7 +97,7 @@
         (consume '|{| (format "Expect '{' before ~a body." kind))
         (set! body (block-stmt))
       
-        (set! depth (sub1 depth)) ; exit function/method
+        (incf depth -1) ; exit function/method
       
         (stmt:fun tok (token-value id) plist body)))
 

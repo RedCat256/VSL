@@ -33,8 +33,8 @@
 
     (define/private (next)
       (when (eqv? #\newline c)
-        (set! line (add1 line)))
-      (set! pos (add1 pos))
+        (incf line))
+      (incf pos)
       (set! prev c)
       (set! c (peek)))
 
