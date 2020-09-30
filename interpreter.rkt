@@ -2,8 +2,14 @@
 (require "types.rkt")
 (require "env.rkt")
 (require "runtime/system.rkt")
+(require "runtime/ui.rkt")
 
 (provide interpreter%)
+
+(define runtime-natives (list
+  system-natives
+  ui-natives
+))
 
 (define interpreter%
   (class object%
@@ -14,8 +20,9 @@
     
     (define binary-ops `((- ,-) (* ,*) (/ ,divide) (< ,<) (<= ,<=) (> ,>) (>= ,>=)))
 
-    (for ([native system-natives])
-      (send env defvar (loxNative-name native) native))
+    (for ([natives runtime-natives])
+      (for ([_ natives])
+        (send env defvar (loxNative-name _) _)))
 
     (define/private (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
@@ -168,6 +175,7 @@
             [(eq? #f val)  "false"]
             [(nil? val)    "nil"]
             [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
+            [(loxNative? val)   (format "<fn ~a>" (loxNative-name val))]
             [(loxInstance? val) (loxInstance-name val)]
             [(loxClass? val)    (loxClass-name val)]
             [else "Unknown data type"]))
