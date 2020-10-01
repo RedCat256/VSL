@@ -92,6 +92,8 @@
           (set! plist (cons (token-value prev) plist))
           (unless (check '|)|)
             (consume '|,| "Expect ',' or ')' after parameter.")))
+        (when (eq? (empty-token-type prev) '|,|)
+          (parse-error "Expect parameter name after ','."))
         (set! plist (reverse plist))
         (consume '|)| "Expect ')' after parameters.")
         (consume '|{| (format "Expect '{' before ~a body." kind))
@@ -234,6 +236,8 @@
           (set! lst (cons (expr) lst))
           (unless (check '|]|)
             (consume '|,| "Expect ',' or ')' after list element.")))
+        (when (eq? (empty-token-type prev) '|,|)
+          (parse-error "Expect expression after ','."))
         (consume '|]| "Expect ']' after list.")
         (expr:list tok (reverse lst))))
 
@@ -243,6 +247,8 @@
           (set! alist (cons (expr) alist))
           (unless (check '|)|)
             (consume '|,| "Expect ',' or ')' after argument.")))
+        (when (eq? (empty-token-type prev) '|,|)
+          (parse-error "Expect expression after ','."))
         (reverse alist)))
 
     (define/private (assign target)
