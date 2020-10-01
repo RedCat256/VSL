@@ -219,6 +219,7 @@
           [(- !) (next) (expr:unary prev (parse-prec 120))]
           [(number id string true false nil) (next) prev]
           [(|(|) (next) (begin0 (expr:unary prev (expr)) (consume '|)| "Expect ')' for grouping"))]
+          [(|[|) (next) (parse-list)]
           [(this)  (cond [inClass (next) (expr:this prev)]
                          [else (parse-error "Cannot use 'this' outside of a class.")])]
           [(super) (cond [inClass (next) (consume '|.| "Expect '.' after super.")
@@ -226,6 +227,15 @@
                                   (expr:super prev)]
                          [else (parse-error "Cannot use 'super' outside of a class.")])]
           [else (parse-error "Expect expression.")])))
+
+    (define/private (parse-list)
+      (let [(tok prev) (lst '())]
+        (while (and (not (check '|]|)) (not-at-end?))
+          (set! lst (cons (expr) lst))
+          (unless (check '|]|)
+            (consume '|,| "Expect ',' or ')' after list element.")))
+        (consume '|]| "Expect ']' after list.")
+        (expr:list tok (reverse lst))))
 
     (define/private (arglist)
       (let ([alist '()])

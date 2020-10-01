@@ -23,6 +23,7 @@
 (struct expr:set     node [receiver expr])
 (struct expr:this    node [])
 (struct expr:super   node [])
+(struct expr:list    node [elements])
 
 (struct stmt:stmts   node [slist])
 (struct stmt:print   node [expr])

@@ -110,7 +110,7 @@
             [(eqv? c #\") (next) (make-string-token)]
             [else
              (case (char-to-symbol c)
-               [(+ - * |.| |,| |;| |(| |)| |{| |}|) (next) (empty-token (char-to-symbol prev) line)]
+               [(+ - * |.| |,| |;| |(| |)| |[| |]| |{| |}|) (next) (empty-token (char-to-symbol prev) line)]
                [(= < > !)
                 (next)
                 (cond [(_match #\=) (empty-token (string->symbol (_text)) line)]

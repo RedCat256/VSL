@@ -157,6 +157,10 @@
             (runtime-error "Undefined property '~a'." m_name))
           (set! method (bind/this _this method))
           method)))
+
+    (define/private (visit-list a)
+      (for/list ([e (expr:list-elements a)])
+        (_eval e)))
     
     (define/private (visit-assign a)
       (let ([name  (token-value (node-token a))]
@@ -168,12 +172,20 @@
       (for ([stmt (stmt:stmts-slist a)])
         (_eval stmt)))
 
+    (define/private (list-to-str lst)
+      (string-join (for/list ([i lst])
+                      (tostr i))
+                   ", "
+                   #:before-first "["
+                   #:after-last "]"))
+
     (define/private (tostr val)
       (cond [(string? val) val]
             [(number? val) (stringify (exact->inexact val))]
             [(eq? #t val)  "true"]
             [(eq? #f val)  "false"]
             [(nil? val)    "nil"]
+            [(list? val) (list-to-str val)]
             [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
             [(loxNative? val)   (format "<fn ~a>" (loxNative-name val))]
             [(loxInstance? val) (loxInstance-name val)]
@@ -284,6 +296,7 @@
             [(expr:set? a)    (visit-set a)]
             [(expr:this? a)   (visit-this a)]
             [(expr:super? a)  (visit-super a)]
+            [(expr:list? a)   (visit-list a)]
             [(stmt:stmts? a)  (visit-stmts a)]
             [(stmt:print? a)  (visit-print a)]
             [(stmt:expr? a)   (_eval (stmt:expr-expr a))]
