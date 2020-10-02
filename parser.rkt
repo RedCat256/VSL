@@ -17,6 +17,11 @@
            [loop-depth 0] ; outside loop
            )
     
+    (define/private (peek-next)
+      (if (>= (add1 pos) (length tokens))
+        nil
+        (list-ref tokens (add1 pos))))
+
     (define/private (peek)
       (if (>= pos (length tokens))
           nil
@@ -31,9 +36,12 @@
       (if (check type)
           (next)
           (parse-error msg)))
+    
+    (define/private (_check tok type)
+      (and (empty-token? tok) (eq? (empty-token-type tok) type)))
 
     (define/private (check type)
-      (eq? (empty-token-type cur) type))
+      (_check cur type))
 
     (define/private (_match . types)
       (call/cc
@@ -67,7 +75,7 @@
 
     (define/private (declaration)
       (cond [(_match 'var)   (var)]
-            [(_match 'fun)   (fun "function")]
+            [(and (check 'fun) (_check (peek-next) 'id)) (next) (fun "function")]
             [(_match 'class) (_class)]
             [else (stmt)]))
 
@@ -80,12 +88,15 @@
         (consume '|;| "Expect ';' after variable declaration.")
         (stmt:var id initializer)))
 
-    (define/private (fun kind)
-      (let-values ([(tok id plist body) (values prev cur '() #f)])
+    (define/private (_fun kind)
+      (let-values ([(tok name plist body) (values prev "anonymous" '() #f)])
       
         (incf depth) ; enter function/method
-      
-        (consume 'id (format "Expect ~a name." kind))
+
+        (unless (check '|(|)
+          (consume 'id (format "Expect ~a name." kind))
+          (set! name (token-value prev)))
+    
         (consume '|(| (format "Expect '(' after ~a name." kind))
         (while (and (not (check '|)|)) (not-at-end?))
           (consume 'id "Expect variable for arguments.")
@@ -100,8 +111,14 @@
         (set! body (block-stmt))
       
         (incf depth -1) ; exit function/method
-      
-        (stmt:fun tok (token-value id) plist body)))
+
+        (list tok name plist body)))
+
+    (define/private (fun kind)
+      (apply stmt:fun (_fun kind)))
+
+    (define/private (anonymous-fun)
+      (apply expr:anonymous-fun (_fun "anonymous")))
 
     (define/private (_class)
       (let ([name cur] [methods '()] [superClass nil])
@@ -221,6 +238,7 @@
                                   (consume 'id "Expect identifier after '.'")
                                   (expr:super prev)]
                          [else (parse-error "Cannot use 'super' outside of a class.")])]
+          [(fun) (next) (anonymous-fun)]
           [else (parse-error "Expect expression.")])))
 
     (define/private (parse-list)

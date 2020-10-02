@@ -244,6 +244,14 @@
                    (_eval body)
                    (when increment (_eval increment)))]))))
 
+    (define/private (visit-anonymous-fun a)
+      (loxFunction (expr:anonymous-fun-name a)
+                   (expr:anonymous-fun-parameters a)
+                   (expr:anonymous-fun-body a)
+                   env
+                   'anonymous
+                  nil))
+
     (define/private (visit-fun a)
       (let ([name (stmt:fun-name a)]
             [pars (stmt:fun-parameters a)]
@@ -304,6 +312,7 @@
             [(expr:list? a)   (visit-list a)]
             [(expr:subscript? a) (visit-subscript a)]
             [(expr:sub-set? a) (visit-sub-set a)]
+            [(expr:anonymous-fun? a) (visit-anonymous-fun a)]
             [(stmt:stmts? a)  (visit-stmts a)]
             [(stmt:expr? a)   (_eval (stmt:expr-expr a))]
             [(stmt:var? a)    (visit-var a)]
