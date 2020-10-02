@@ -7,9 +7,9 @@
 (provide interpreter%)
 
 (define runtime-natives (list
-  system-natives
-  ui-natives
-))
+                         system-natives
+                         ui-natives
+                         ))
 
 (define interpreter%
   (class object%
@@ -108,8 +108,8 @@
 
     (define/private (call/native callee args)
       (if (~= (loxNative-arity callee) (length args))
-        (runtime-error "Expected ~a arguments but got ~a." (loxNative-arity callee) (length args))
-        (apply (loxNative-fn callee) args)))
+          (runtime-error "Expected ~a arguments but got ~a." (loxNative-arity callee) (length args))
+          (apply (loxNative-fn callee) args)))
       
     (define/private (visit-call a)
       (let ([callee (_eval (expr:call-callee a))]
@@ -159,19 +159,36 @@
           method)))
 
     (define/private (visit-list a)
-      (for/list ([e (expr:list-elements a)])
-        (_eval e)))
+      (let ([lst #f])
+        (set! lst
+              (for/list ([e (expr:list-elements a)])
+                (_eval e)))
+        (loxList lst (length lst))))
+
+    (define/private (check-subscript target index)
+      (when (not (loxList? target))
+        (runtime-error "Can only apply '[' to a list"))
+      (when (not (and (exact? index) (integer? index)))
+        (runtime-error "Subscript must be an integer."))
+      (when (or (>= index (loxList-length target)) (negative? index))
+        (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (loxList-length target)) index)))
 
     (define/private (visit-subscript a)
       (let ([target (_eval (expr:subscript-target a))]
             [index  (_eval (expr:subscript-index a))])
-           (when (not (list? target))
-              (runtime-error "Can only apply '[' to a list"))
-            (when (not (and (exact? index) (integer? index)))
-              (runtime-error "Subscript must be an integer."))
-            (when (or (>= index (length target)) (negative? index))
-              (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (length target)) index))
-            (list-ref target index)))
+        (check-subscript target index)
+        (list-ref (loxList-elements target) index)))
+
+    (define/private (visit-sub-set a)
+      (let ([target (_eval (expr:sub-set-target a))]
+            [index  (_eval (expr:sub-set-index a))]
+            [value  (_eval (expr:sub-set-expr a))])
+        (check-subscript target index)
+        (let ([v #f])
+          (set! v (list->vector (loxList-elements target)))
+          (vector-set! v index value)
+          (set-loxList-elements! target (vector->list v))
+          target)))
 
     (define/private (visit-assign a)
       (let ([name  (token-value (node-token a))]
@@ -185,7 +202,7 @@
 
     (define/private (list-to-str lst)
       (string-join (for/list ([i lst])
-                      (tostr i))
+                     (tostr i))
                    ", "
                    #:before-first "["
                    #:after-last "]"))
@@ -196,7 +213,7 @@
             [(eq? #t val)  "true"]
             [(eq? #f val)  "false"]
             [(nil? val)    "nil"]
-            [(list? val) (list-to-str val)]
+            [(loxList? val) (list-to-str (loxList-elements val))]
             [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
             [(loxNative? val)   (format "<fn ~a>" (loxNative-name val))]
             [(loxInstance? val) (loxInstance-name val)]
@@ -309,6 +326,7 @@
             [(expr:super? a)  (visit-super a)]
             [(expr:list? a)   (visit-list a)]
             [(expr:subscript? a) (visit-subscript a)]
+            [(expr:sub-set? a) (visit-sub-set a)]
             [(stmt:stmts? a)  (visit-stmts a)]
             [(stmt:print? a)  (visit-print a)]
             [(stmt:expr? a)   (_eval (stmt:expr-expr a))]

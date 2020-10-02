@@ -254,6 +254,7 @@
     (define/private (assign target)
       (let ([val (parse-prec (sub1 (get-prec prev)))])
         (cond [(expr:get? target) (expr:set (node-token target) (expr:get-receiver target) val)]
+              [(expr:subscript? target) (expr:sub-set nil (expr:subscript-target target) (expr:subscript-index target) val)]
               [(and (token? target) (eq? (empty-token-type target) 'id)) (expr:assign target val)]
               [else (parse-error "Invalid assignment target.")])))
 

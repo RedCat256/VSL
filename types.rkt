@@ -25,6 +25,7 @@
 (struct expr:super   node [])
 (struct expr:list    node [elements])
 (struct expr:subscript node [target index])
+(struct expr:sub-set node [target index expr])
 
 (struct stmt:stmts   node [slist])
 (struct stmt:print   node [expr])
@@ -43,6 +44,7 @@
 (struct loxClass       [name super-class methods])
 (struct loxInstance    [name klass fields])
 (struct loxNative      [name arity fn])
+(struct loxList        [elements length] #:mutable)
 
 (struct lex-exn     exn:fail:user ())
 (struct parse-exn   exn:fail:user ())
