@@ -55,7 +55,7 @@
            (when (eq? (empty-token-type prev) '|;|)
              (return nil))
            (case (empty-token-type cur)
-             [(class fun var for if while print return) (return nil)])
+             [(class fun var for if while return) (return nil)])
            (next)))))
 
     (define/public (stmts)
@@ -124,20 +124,13 @@
         (stmt:class name superClass (reverse methods))))
 
     (define/private (stmt)
-      (cond [(_match 'print)  (print-stmt)]
-            [(_match '|{|)    (block-stmt)]
+      (cond [(_match '|{|)    (block-stmt)]
             [(_match 'if)     (if-stmt)]
             [(_match 'while)  (while-stmt)]
             [(_match 'for)    (for-stmt)]
             [(_match 'return) (return-stmt)]
             [(_match 'break)  (break-stmt)]
             [else             (expr-stmt)]))
-
-    (define/private (print-stmt)
-      (let ([tok prev]
-            [e (expr)])
-        (consume '|;| "Expect ';' after value.")
-        (stmt:print tok e)))
 
     (define/private (block-stmt)
       (let ([sts '()]

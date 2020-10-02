@@ -28,7 +28,6 @@
 (struct expr:sub-set node [target index expr])
 
 (struct stmt:stmts   node [slist])
-(struct stmt:print   node [expr])
 (struct stmt:expr    node [expr])
 (struct stmt:var     node [init])
 (struct stmt:block   node [slist])
@@ -101,6 +100,26 @@
 
 (define (~= a b)
   (not (= a b)))
+
+(define (list-to-str lst)
+  (string-join (for/list ([i lst])
+                  (tostr i))
+                ", "
+                #:before-first "["
+                #:after-last "]"))
+
+(define (tostr val)
+  (cond [(string? val) val]
+        [(number? val) (stringify (exact->inexact val))]
+        [(eq? #t val)  "true"]
+        [(eq? #f val)  "false"]
+        [(nil? val)    "nil"]
+        [(loxList? val) (list-to-str (loxList-elements val))]
+        [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
+        [(loxNative? val)   (format "<fn ~a>" (loxNative-name val))]
+        [(loxInstance? val) (loxInstance-name val)]
+        [(loxClass? val)    (loxClass-name val)]
+        [else "Unknown data type"]))
 
 (define (mkerr exn)
   (λ x

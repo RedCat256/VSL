@@ -199,29 +199,6 @@
     (define/private (visit-stmts a)
       (for ([stmt (stmt:stmts-slist a)])
         (_eval stmt)))
-
-    (define/private (list-to-str lst)
-      (string-join (for/list ([i lst])
-                     (tostr i))
-                   ", "
-                   #:before-first "["
-                   #:after-last "]"))
-
-    (define/private (tostr val)
-      (cond [(string? val) val]
-            [(number? val) (stringify (exact->inexact val))]
-            [(eq? #t val)  "true"]
-            [(eq? #f val)  "false"]
-            [(nil? val)    "nil"]
-            [(loxList? val) (list-to-str (loxList-elements val))]
-            [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
-            [(loxNative? val)   (format "<fn ~a>" (loxNative-name val))]
-            [(loxInstance? val) (loxInstance-name val)]
-            [(loxClass? val)    (loxClass-name val)]
-            [else "Unknown data type"]))
-
-    (define/private (visit-print a)
-      (displayln (tostr (_eval (stmt:print-expr a)))))
     
     (define/private (visit-var a)
       (let ([name (token-value (node-token a))]
@@ -328,7 +305,6 @@
             [(expr:subscript? a) (visit-subscript a)]
             [(expr:sub-set? a) (visit-sub-set a)]
             [(stmt:stmts? a)  (visit-stmts a)]
-            [(stmt:print? a)  (visit-print a)]
             [(stmt:expr? a)   (_eval (stmt:expr-expr a))]
             [(stmt:var? a)    (visit-var a)]
             [(stmt:block? a)  (visit-block a)]
