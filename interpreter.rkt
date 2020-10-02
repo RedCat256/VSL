@@ -161,7 +161,18 @@
     (define/private (visit-list a)
       (for/list ([e (expr:list-elements a)])
         (_eval e)))
-    
+
+    (define/private (visit-subscript a)
+      (let ([target (_eval (expr:subscript-target a))]
+            [index  (_eval (expr:subscript-index a))])
+           (when (not (list? target))
+              (runtime-error "Can only apply '[' to a list"))
+            (when (not (and (exact? index) (integer? index)))
+              (runtime-error "Subscript must be an integer."))
+            (when (or (>= index (length target)) (negative? index))
+              (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (length target)) index))
+            (list-ref target index)))
+
     (define/private (visit-assign a)
       (let ([name  (token-value (node-token a))]
             [value (_eval (expr:assign-expr a))])
@@ -297,6 +308,7 @@
             [(expr:this? a)   (visit-this a)]
             [(expr:super? a)  (visit-super a)]
             [(expr:list? a)   (visit-list a)]
+            [(expr:subscript? a) (visit-subscript a)]
             [(stmt:stmts? a)  (visit-stmts a)]
             [(stmt:print? a)  (visit-print a)]
             [(stmt:expr? a)   (_eval (stmt:expr-expr a))]

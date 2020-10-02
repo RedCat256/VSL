@@ -24,6 +24,7 @@
 (struct expr:this    node [])
 (struct expr:super   node [])
 (struct expr:list    node [elements])
+(struct expr:subscript node [target index])
 
 (struct stmt:stmts   node [slist])
 (struct stmt:print   node [expr])

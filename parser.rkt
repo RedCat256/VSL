@@ -266,6 +266,9 @@
           [(|(|) (let ([alist (arglist)])
                    (consume '|)| "Expect ')' after function call.")
                    (expr:call prev left alist))]
+          [(|[|) (let ([tok prev] [index (expr)])
+                   (consume '|]| "Expect ']' for subscript expression.")
+                   (expr:subscript tok left index))]
           [(|.|) (consume 'id "Expect property name after '.'.")
                  (expr:get prev left)]
           [else (parse-error "Invalid binary operator '~a'" type)])))
@@ -279,7 +282,7 @@
         [(< > <= >=)   90]
         [(+ -)         100]
         [(* /)         110]
-        [(|.| |(|)     130] ; skip 120 for unary
+        [(|.| |(| |[|)     130] ; skip 120 for unary
         [else          0]))
 
     (define/private (expr)
