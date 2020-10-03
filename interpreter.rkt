@@ -137,14 +137,16 @@
         (cond [(Instance? receiver)
                 (if (instance-has? receiver field)
                     (instance-get receiver field)
-                    (bind/this receiver (class-get receiver field)))]
+                    (let ([fn (class-get receiver field)])
+                      (if fn
+                          (bind/this receiver fn)
+                          (runtime-error (format "Undefined Property '~a'." field)))))]
               [(Class? receiver)
                 (let ([property (class-get receiver field)])
                   (cond [(and (Function? property) (eq? 'static (Function-type property))) property]
                         [(Function? property) (runtime-error "Class can only call static method.")]
                         [(Native? property) property]
-                        [else (runtime-error (format "Undefined Property '~a'." field))]))]
-              [else (runtime-error (format "Undefined Property '~a'." field))])))
+                        [else (runtime-error (format "Undefined Property '~a'." field))]))])))
 
     (define/private (visit-set a)
       (let ([receiver (_eval (expr:set-receiver a))]
