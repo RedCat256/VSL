@@ -78,7 +78,7 @@
 
     (define/private (declaration)
       (cond [(_match 'var)   (var)]
-            [(and (check 'fun) (_check (peek-next) 'id)) (next) (fun "function")]
+            [(and (check 'fun) (_check (peek-next) 'id)) (next) (fun "function" 'function)]
             [(check 'static)
                 (next)
                 (if (_match 'class)
@@ -96,7 +96,7 @@
         (consume '|;| "Expect ';' after variable declaration.")
         (stmt:var id initializer)))
 
-    (define/private (_fun kind)
+    (define/private (_fun kind type)
       (let-values ([(tok name plist body) (values prev "anonymous" '() #f)])
       
         (incf depth) ; enter function/method
@@ -120,13 +120,18 @@
       
         (incf depth -1) ; exit function/method
 
-        (list tok name plist body)))
+        (list tok name plist body type)))
 
-    (define/private (fun kind)
-      (apply stmt:fun (_fun kind)))
+    (define/private (fun kind type)
+      (apply stmt:fun (_fun kind type)))
 
     (define/private (anonymous-fun)
-      (apply expr:anonymous-fun (_fun "anonymous")))
+      (apply expr:anonymous-fun (_fun "anonymous" 'anonymous)))
+
+    (define/private (method)
+      (cond [(_match 'static) (fun "method" 'static)]
+            [(check 'id) (fun "method" 'method)]
+            [else (parse-error "Expect method name after static.")]))
 
     (define/private (_class instantiable)
       (let ([name cur] [methods '()] [superClass nil])
@@ -141,7 +146,7 @@
         
         (consume '|{| "Expect '{' after class name.")
         (while (and (~check '|}|) (not-at-end?))
-          (set! methods (cons (fun "method") methods)))
+          (set! methods (cons (method) methods)))
         (consume '|}| "Expect '}' after class declaration.")
 
         (set! inClass #f) ; exit class

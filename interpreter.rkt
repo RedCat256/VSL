@@ -119,7 +119,7 @@
               [(Class? callee)
                 (if (Class-instantiable callee)
                     (call/new callee args)
-                    (runtime-error "Class ~a cannot be instantiated." (Class-name callee)))]
+                    (runtime-error "Static class ~a cannot be instantiated." (Class-name callee)))]
               [(Native? callee) (call/native callee args)]
               [else (runtime-error "Can only call functions and classes.")])))
 
@@ -138,7 +138,12 @@
                 (if (instance-has? receiver field)
                     (instance-get receiver field)
                     (bind/this receiver (class-get receiver field)))]
-              [(Class? receiver) (class-get receiver field)]
+              [(Class? receiver)
+                (let ([property (class-get receiver field)])
+                  (cond [(and (Function? property) (eq? 'static (Function-type property))) property]
+                        [(Function? property) (runtime-error "Class can only call static method.")]
+                        [(Native? property) property]
+                        [else (runtime-error (format "Undefined Property '~a'." field))]))]
               [else (runtime-error (format "Undefined Property '~a'." field))])))
 
     (define/private (visit-set a)
@@ -266,7 +271,7 @@
             [klass nil])
         (when (~nil? cur-fun)
           (set! klass (Function-klass cur-fun)))
-        (send env defvar name (Function name pars body env 'fun klass))))
+        (send env defvar name (Function name pars body env (stmt:fun-type a) klass))))
 
     (define/private (visit-class a)
       (let ([name (token-value (node-token a))]
@@ -290,7 +295,7 @@
           (let* ([_name (stmt:fun-name i)]
                  [pars (stmt:fun-parameters i)]
                  [body (stmt:fun-body i)]
-                 [fn   (Function _name pars body env 'method klass)])
+                 [fn   (Function _name pars body env (stmt:fun-type i) klass)])
             (when (eq? _name 'init)
               (set! fn (Function _name pars body env 'init klass)))
             (hash-set! methods _name fn)))

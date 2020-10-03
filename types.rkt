@@ -35,7 +35,7 @@
 (struct stmt:if      node [condition if-arm then-arm])
 (struct stmt:while   node [condition body])
 (struct stmt:for     node [init condition increment body])
-(struct stmt:fun     node [name parameters body])
+(struct stmt:fun     node [name parameters body type])
 (struct stmt:return  node [expr])
 (struct stmt:break   node [])
 (struct stmt:class   node [super-class methods instantiable])
