@@ -1,7 +1,7 @@
 #lang racket
 (require "types.rkt")
 (require "env.rkt")
-(require "runtime/system.rkt")
+(require "runtime/System.rkt")
 (require "runtime/ui.rkt")
 
 (provide interpreter%)
