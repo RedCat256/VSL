@@ -4,7 +4,7 @@
 
 (provide ui-natives)
 
-(define _ loxNative)
+(define _ Native)
 
 (define ui-natives
   (list

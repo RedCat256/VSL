@@ -6,6 +6,6 @@
 
 (define system-natives
   (list
-   (loxNative 'clock 0 (λ () (/ (current-milliseconds) 1000.0)))
-   (loxNative 'print 1 (lambda (val) (displayln (tostr val))))
+   (Native 'clock 0 (λ () (/ (current-milliseconds) 1000.0)))
+   (Native 'print 1 (lambda (val) (displayln (tostr val))))
    ))

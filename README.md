@@ -1,4 +1,4 @@
-# lox
-Lox programing language(Racket version)
+# VSL
+Very Simple Language
 
 Reference: [crafting interpreters](https://craftinginterpreters.com/)

@@ -30,7 +30,7 @@
           [else (newline)])))
 
 (define (banner)
-  (printf "[lox]~n"))
+  (printf "[VSL]~n"))
 
 (define (make-parser str)
   (let ([sc (new scanner% [chars str])])

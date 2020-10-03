@@ -22,7 +22,7 @@
 
     (for ([natives runtime-natives])
       (for ([_ natives])
-        (send env defvar (loxNative-name _) _)))
+        (send env defvar (Native-name _) _)))
 
     (define/private (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
@@ -76,20 +76,20 @@
           (set! env prev))))
 
     (define/private (call/fn fn args)
-      (let ([_env  (new env% [outer (loxFunction-env fn)])]
+      (let ([_env  (new env% [outer (Function-env fn)])]
             [last  env]
-            [arity (length (loxFunction-parameters fn))]
+            [arity (length (Function-parameters fn))]
             [return-val nil]
             [prev-fun cur-fun])
         (when (~= arity (length args))
           (runtime-error "Expected ~a arguments but got ~a." arity (length args)))
-        (for ([i (loxFunction-parameters fn)] [j args])
+        (for ([i (Function-parameters fn)] [j args])
           (send _env defvar i j))
         (set! env _env)
         (set! cur-fun fn)
         (with-handlers
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
-          (visit-block (loxFunction-body fn)))
+          (visit-block (Function-body fn)))
         (when (initializer? fn)
           (set! return-val (send env get "this")))
         (set! env last)
@@ -98,37 +98,37 @@
 
     (define/private (call/new klass args)
       (let* ([init #f]
-             [name (format "~a instance" (loxClass-name klass))]
-             [ins  (loxInstance name  klass (make-hash))])
-        (cond [(hash-has-key? (loxClass-methods klass) 'init)
-               (set! init (bind/this ins (hash-ref (loxClass-methods klass) 'init)))
+             [name (format "~a instance" (Class-name klass))]
+             [ins  (Instance name  klass (make-hash))])
+        (cond [(hash-has-key? (Class-methods klass) 'init)
+               (set! init (bind/this ins (hash-ref (Class-methods klass) 'init)))
                (call/fn init args)]
               [(not (zero? (length args))) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
 
     (define/private (call/native callee args)
-      (if (~= (loxNative-arity callee) (length args))
-          (runtime-error "Expected ~a arguments but got ~a." (loxNative-arity callee) (length args))
-          (apply (loxNative-fn callee) args)))
+      (if (~= (Native-arity callee) (length args))
+          (runtime-error "Expected ~a arguments but got ~a." (Native-arity callee) (length args))
+          (apply (Native-fn callee) args)))
       
     (define/private (visit-call a)
       (let ([callee (_eval (expr:call-callee a))]
             [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
-        (cond [(loxFunction? callee) (call/fn callee args)]
-              [(loxClass? callee) (call/new callee args)]
-              [(loxNative? callee) (call/native callee args)]
+        (cond [(Function? callee) (call/fn callee args)]
+              [(Class? callee) (call/new callee args)]
+              [(Native? callee) (call/native callee args)]
               [else (runtime-error "Can only call functions and classes.")])))
 
     (define/private (bind/this ins fn)
-      (let ([env (new env% [outer (loxFunction-env fn)])])
+      (let ([env (new env% [outer (Function-env fn)])])
         (send env defvar "this" ins)
-        (struct-copy loxFunction fn [env env])))
+        (struct-copy Function fn [env env])))
         
     (define/private (visit-get a)
       (let ([receiver (_eval (expr:get-receiver a))]
             [field    (token-value (node-token a))]
             [fn #f])
-        (unless (loxInstance? receiver)
+        (unless (Instance? receiver)
           (runtime-error "Only instances have properties."))
         (cond [(instance-has? receiver field) (instance-get receiver field)]
               [(begin (set! fn (class-get receiver field)) fn) (bind/this receiver fn)]
@@ -138,7 +138,7 @@
       (let ([receiver (_eval (expr:set-receiver a))]
             [field    (token-value (node-token a))]
             [value    (_eval (expr:set-expr a))])
-        (unless (loxInstance? receiver)
+        (unless (Instance? receiver)
           (runtime-error "Only instances have fields."))
         (instance-set receiver field value)
         value))
@@ -149,7 +149,7 @@
     (define/private (visit-super a)
       (let* ([m_name (token-value (node-token a))]
              [_this  (send env get "this")]
-             [super-class (loxClass-super-class (loxFunction-klass cur-fun))])
+             [super-class (Class-super-class (Function-klass cur-fun))])
         (when (nil? super-class)
           (runtime-error "Cannot use 'super' in a class without superclass."))
         (let ([method (class-get super-class m_name)])
@@ -245,7 +245,7 @@
                    (when increment (_eval increment)))]))))
 
     (define/private (visit-anonymous-fun a)
-      (loxFunction (expr:anonymous-fun-name a)
+      (Function (expr:anonymous-fun-name a)
                    (expr:anonymous-fun-parameters a)
                    (expr:anonymous-fun-body a)
                    env
@@ -258,8 +258,8 @@
             [body (stmt:fun-body a)]
             [klass nil])
         (when (~nil? cur-fun)
-          (set! klass (loxFunction-klass cur-fun)))
-        (send env defvar name (loxFunction name pars body env 'fun klass))))
+          (set! klass (Function-klass cur-fun)))
+        (send env defvar name (Function name pars body env 'fun klass))))
 
     (define/private (visit-class a)
       (let ([name (token-value (node-token a))]
@@ -274,18 +274,18 @@
             (runtime-error "A class cannot inherit from itself."))
           
           (set! super-class (send env get super-class-name))
-          (unless (loxClass? super-class)
+          (unless (Class? super-class)
             (runtime-error "Superclass must be a class.")))
 
-        (set! klass (loxClass name super-class methods))
+        (set! klass (Class name super-class methods))
         ; create methods
         (for ([i (stmt:class-methods a)])
           (let* ([_name (stmt:fun-name i)]
                  [pars (stmt:fun-parameters i)]
                  [body (stmt:fun-body i)]
-                 [fn   (loxFunction _name pars body env 'method klass)])
+                 [fn   (Function _name pars body env 'method klass)])
             (when (eq? _name 'init)
-              (set! fn (loxFunction _name pars body env 'init klass)))
+              (set! fn (Function _name pars body env 'init klass)))
             (hash-set! methods _name fn)))
         (send env defvar name klass)))
 

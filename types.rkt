@@ -40,10 +40,10 @@
 (struct stmt:break   node [])
 (struct stmt:class   node [super-class methods])
 
-(struct loxFunction    [name parameters body env type klass])
-(struct loxNative      [name arity fn])
-(struct loxClass       [name super-class methods])
-(struct loxInstance    [name klass fields])
+(struct Function    [name parameters body env type klass])
+(struct Native      [name arity fn])
+(struct Class       [name super-class methods])
+(struct Instance    [name klass fields])
 (struct loxList        [elements length] #:mutable)
 
 (struct lex-exn     exn:fail:user ())
@@ -97,7 +97,7 @@
   (and (list? l) (eq? (car l) 'return)))
 
 (define (initializer? fn)
-  (eq? (loxFunction-type fn) 'init))
+  (eq? (Function-type fn) 'init))
 
 (define (~= a b)
   (not (= a b)))
@@ -116,10 +116,10 @@
         [(eq? #f val)  "false"]
         [(nil? val)    "nil"]
         [(loxList? val) (list-to-str (loxList-elements val))]
-        [(loxFunction? val) (format "<fn ~a>" (loxFunction-name val))]
-        [(loxNative? val)   (format "<fn ~a>" (loxNative-name val))]
-        [(loxInstance? val) (loxInstance-name val)]
-        [(loxClass? val)    (loxClass-name val)]
+        [(Function? val) (format "<fn ~a>" (Function-name val))]
+        [(Native? val)   (format "<fn ~a>" (Native-name val))]
+        [(Instance? val) (Instance-name val)]
+        [(Class? val)    (Class-name val)]
         [else "Unknown data type"]))
 
 (define (mkerr exn)
@@ -139,25 +139,25 @@
           [(runtime-exn? exn) (eprintf "RuntimeError: ~a~n" msg)])))
 
 (define (instance-has? obj field)
-  (hash-has-key? (loxInstance-fields obj) field))
+  (hash-has-key? (Instance-fields obj) field))
 
 (define (instance-get obj field)
-  (hash-ref (loxInstance-fields obj) field))
+  (hash-ref (Instance-fields obj) field))
 
 (define (instance-set obj field value)
-  (hash-set! (loxInstance-fields obj) field value))
+  (hash-set! (Instance-fields obj) field value))
 
 (define (class-get obj field)
   (let ([klass obj]
         [fn #f])
-    (when (loxInstance? obj)
-      (set! klass (loxInstance-klass obj)))
+    (when (Instance? obj)
+      (set! klass (Instance-klass obj)))
 
     (call/cc
      (λ (return)
        (while (~nil? klass)
-         (set! fn (hash-ref (loxClass-methods klass) field #f))
+         (set! fn (hash-ref (Class-methods klass) field #f))
          (when fn
            (return fn))
-         (set! klass (loxClass-super-class klass)))
+         (set! klass (Class-super-class klass)))
        #f))))
