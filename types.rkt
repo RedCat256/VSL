@@ -38,7 +38,7 @@
 (struct stmt:fun     node [name parameters body])
 (struct stmt:return  node [expr])
 (struct stmt:break   node [])
-(struct stmt:class   node [super-class methods])
+(struct stmt:class   node [super-class methods instantiable])
 
 (struct Function    [name parameters body env type klass])
 (struct Native      [name arity fn])

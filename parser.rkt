@@ -79,7 +79,12 @@
     (define/private (declaration)
       (cond [(_match 'var)   (var)]
             [(and (check 'fun) (_check (peek-next) 'id)) (next) (fun "function")]
-            [(_match 'class) (_class)]
+            [(check 'static)
+                (next)
+                (if (_match 'class)
+                    (_class #f)
+                    (parse-error "Expect 'class' after static."))]
+            [(_match 'class) (_class #t)]
             [else (stmt)]))
 
     (define/private (var)
@@ -123,7 +128,7 @@
     (define/private (anonymous-fun)
       (apply expr:anonymous-fun (_fun "anonymous")))
 
-    (define/private (_class)
+    (define/private (_class instantiable)
       (let ([name cur] [methods '()] [superClass nil])
 
         (set! inClass #t) ; enter class
@@ -141,7 +146,7 @@
 
         (set! inClass #f) ; exit class
       
-        (stmt:class name superClass (reverse methods))))
+        (stmt:class name superClass (reverse methods) instantiable)))
 
     (define/private (stmt)
       (cond [(_match '|{|)    (block-stmt)]

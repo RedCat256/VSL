@@ -284,7 +284,7 @@
           (unless (Class? super-class)
             (runtime-error "Superclass must be a class.")))
 
-        (set! klass (Class name super-class methods #t))
+        (set! klass (Class name super-class methods (stmt:class-instantiable a)))
         ; create methods
         (for ([i (stmt:class-methods a)])
           (let* ([_name (stmt:fun-name i)]
