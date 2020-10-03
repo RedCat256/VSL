@@ -43,6 +43,9 @@
     (define/private (check type)
       (_check cur type))
 
+    (define/private (~check type)
+      (not (check type)))
+
     (define/private (_match . types)
       (call/cc
        (λ (return)
@@ -53,7 +56,7 @@
          #f)))
 
     (define/private (not-at-end?)
-      (not (check 'eof)))
+      (~check 'eof))
 
     (define/private (synchronize)
       (next)
@@ -98,7 +101,7 @@
           (set! name (token-value prev)))
     
         (consume '|(| (format "Expect '(' after ~a name." kind))
-        (while (and (not (check '|)|)) (not-at-end?))
+        (while (and (~check '|)|) (not-at-end?))
           (consume 'id "Expect variable for arguments.")
           (set! plist (cons (token-value prev) plist))
           (unless (check '|)|)
@@ -132,7 +135,7 @@
           (set! superClass prev))
         
         (consume '|{| "Expect '{' after class name.")
-        (while (and (not (check '|}|)) (not-at-end?))
+        (while (and (~check '|}|) (not-at-end?))
           (set! methods (cons (fun "method") methods)))
         (consume '|}| "Expect '}' after class declaration.")
 
@@ -152,7 +155,7 @@
     (define/private (block-stmt)
       (let ([sts '()]
             [tok prev])
-        (while (and (not (check '|}|)) (not-at-end?))
+        (while (and (~check '|}|) (not-at-end?))
           (set! sts (cons (declaration) sts)))
         (consume '|}| "Expect '}' after block.")
         (stmt:block tok (reverse sts))))
@@ -243,7 +246,7 @@
 
     (define/private (parse-list)
       (let [(tok prev) (lst '())]
-        (while (and (not (check '|]|)) (not-at-end?))
+        (while (and (~check '|]|) (not-at-end?))
           (set! lst (cons (expr) lst))
           (unless (check '|]|)
             (consume '|,| "Expect ',' or ')' after list element.")))
@@ -254,7 +257,7 @@
 
     (define/private (arglist)
       (let ([alist '()])
-        (while (and (not (check '|)|)) (not-at-end?))
+        (while (and (~check '|)|) (not-at-end?))
           (set! alist (cons (expr) alist))
           (unless (check '|)|)
             (consume '|,| "Expect ',' or ')' after argument.")))
