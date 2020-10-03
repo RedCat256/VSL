@@ -6,10 +6,8 @@
 
 (provide interpreter%)
 
-(define runtime-natives (list
-                         system-natives
-                         ui-natives
-                         ))
+(define runtime-natives (list ui-natives))
+(define runtime-native-class (list System))
 
 (define interpreter%
   (class object%
@@ -23,6 +21,9 @@
     (for ([natives runtime-natives])
       (for ([_ natives])
         (send env defvar (Native-name _) _)))
+    
+    (for ([_ runtime-native-class])
+      (send env defvar (Class-name _) _))
 
     (define/private (symbol-function sym)
       (let ([p (assoc sym binary-ops)])
@@ -115,7 +116,10 @@
       (let ([callee (_eval (expr:call-callee a))]
             [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
         (cond [(Function? callee) (call/fn callee args)]
-              [(Class? callee) (call/new callee args)]
+              [(Class? callee)
+                (if (Class-instantiable callee)
+                    (call/new callee args)
+                    (runtime-error "Class ~a cannot be instantiated." (Class-name callee)))]
               [(Native? callee) (call/native callee args)]
               [else (runtime-error "Can only call functions and classes.")])))
 
@@ -128,10 +132,13 @@
       (let ([receiver (_eval (expr:get-receiver a))]
             [field    (token-value (node-token a))]
             [fn #f])
-        (unless (Instance? receiver)
-          (runtime-error "Only instances have properties."))
-        (cond [(instance-has? receiver field) (instance-get receiver field)]
-              [(begin (set! fn (class-get receiver field)) fn) (bind/this receiver fn)]
+        (unless (or (Instance? receiver) (Class? receiver))
+          (runtime-error "Only instance or class have properties."))
+        (cond [(Instance? receiver)
+                (if (instance-has? receiver field)
+                    (instance-get receiver field)
+                    (bind/this receiver (class-get receiver field)))]
+              [(Class? receiver) (class-get receiver field)]
               [else (runtime-error (format "Undefined Property '~a'." field))])))
 
     (define/private (visit-set a)
@@ -139,7 +146,7 @@
             [field    (token-value (node-token a))]
             [value    (_eval (expr:set-expr a))])
         (unless (Instance? receiver)
-          (runtime-error "Only instances have fields."))
+          (runtime-error "Only instance have fields."))
         (instance-set receiver field value)
         value))
 
@@ -163,21 +170,21 @@
         (set! lst
               (for/list ([e (expr:list-elements a)])
                 (_eval e)))
-        (loxList lst (length lst))))
+        (List lst (length lst))))
 
     (define/private (check-subscript target index)
-      (when (not (loxList? target))
+      (when (not (List? target))
         (runtime-error "Can only apply '[' to a list"))
       (when (not (and (exact? index) (integer? index)))
         (runtime-error "Subscript must be an integer."))
-      (when (or (>= index (loxList-length target)) (negative? index))
-        (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (loxList-length target)) index)))
+      (when (or (>= index (List-length target)) (negative? index))
+        (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (List-length target)) index)))
 
     (define/private (visit-subscript a)
       (let ([target (_eval (expr:subscript-target a))]
             [index  (_eval (expr:subscript-index a))])
         (check-subscript target index)
-        (list-ref (loxList-elements target) index)))
+        (list-ref (List-elements target) index)))
 
     (define/private (visit-sub-set a)
       (let ([target (_eval (expr:sub-set-target a))]
@@ -185,9 +192,9 @@
             [value  (_eval (expr:sub-set-expr a))])
         (check-subscript target index)
         (let ([v #f])
-          (set! v (list->vector (loxList-elements target)))
+          (set! v (list->vector (List-elements target)))
           (vector-set! v index value)
-          (set-loxList-elements! target (vector->list v))
+          (set-List-elements! target (vector->list v))
           target)))
 
     (define/private (visit-assign a)
@@ -277,7 +284,7 @@
           (unless (Class? super-class)
             (runtime-error "Superclass must be a class.")))
 
-        (set! klass (Class name super-class methods))
+        (set! klass (Class name super-class methods #t))
         ; create methods
         (for ([i (stmt:class-methods a)])
           (let* ([_name (stmt:fun-name i)]
