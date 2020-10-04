@@ -16,7 +16,7 @@
     (define keywords (make-hash))
 
     (let ([keys '(and class else false fun for if nil or return super
-                      this true var while break)])
+                      this true var while break static)])
       (for ([k keys])
         (hash-set! keywords k #t)))
 

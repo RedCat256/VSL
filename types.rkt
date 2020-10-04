@@ -35,16 +35,16 @@
 (struct stmt:if      node [condition if-arm then-arm])
 (struct stmt:while   node [condition body])
 (struct stmt:for     node [init condition increment body])
-(struct stmt:fun     node [name parameters body])
+(struct stmt:fun     node [name parameters body type])
 (struct stmt:return  node [expr])
 (struct stmt:break   node [])
-(struct stmt:class   node [super-class methods])
+(struct stmt:class   node [super-class methods instantiable])
 
 (struct Function    [name parameters body env type klass])
 (struct Native      [name arity fn])
-(struct Class       [name super-class methods])
+(struct Class       [name super-class methods instantiable])
 (struct Instance    [name klass fields])
-(struct loxList        [elements length] #:mutable)
+(struct List        [elements length] #:mutable)
 
 (struct lex-exn     exn:fail:user ())
 (struct parse-exn   exn:fail:user ())
@@ -115,7 +115,7 @@
         [(eq? #t val)  "true"]
         [(eq? #f val)  "false"]
         [(nil? val)    "nil"]
-        [(loxList? val) (list-to-str (loxList-elements val))]
+        [(List? val) (list-to-str (List-elements val))]
         [(Function? val) (format "<fn ~a>" (Function-name val))]
         [(Native? val)   (format "<fn ~a>" (Native-name val))]
         [(Instance? val) (Instance-name val)]
