@@ -57,7 +57,7 @@
       (and (char? c) (char-whitespace? c)))
 
     (define/private (make-string-token)
-      (while (not (or (eqv? c eof) (eqv? c #\")))
+      (while (not (set-member? (set eof #\") c))
         (next))
       (when (eqv? c eof)
         (parse-error "Unterminated string."))
@@ -89,7 +89,7 @@
         (next)))
 
     (define/private (skip-comment)
-      (while (not (or (eqv? c eof) (eqv? c #\newline)))
+      (while (not (set-member? (set eof #\newline) c))
         (next)))
 
     (define/public (get-tokens)
