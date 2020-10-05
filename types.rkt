@@ -85,11 +85,6 @@
         (substring s 0 (- n 2))
         s)))
 
-(define (member? a l)
-  (cond [(null? l) #f]
-        [(equal? a (car l)) #t]
-        [else (member? a (cdr l))]))
-
 (define (char-to-symbol c)
   (string->symbol (string c)))
 
