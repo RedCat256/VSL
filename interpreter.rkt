@@ -70,7 +70,7 @@
       (let ([prev env])
         (set! env (new env% [outer env]))
         (with-handlers
-            ([user-exn-catched? (λ (e) (set! env prev) (raise e))])
+            ([runtime-exn? (λ (e) (set! env prev) (raise e))])
           (for ([stmt (stmt:block-slist ast)])
             (_eval stmt))
           (set! env prev))))
