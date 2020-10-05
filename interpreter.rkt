@@ -28,23 +28,23 @@
 
     (define/private (visit-unary ast)
       (case (empty-token-type (node-token ast))
-        [(-) (let ([v (_eval (expr:unary-expr ast))])
+        [(-) (let ([v (evaluate (expr:unary-expr ast))])
                (if (number? v)
                    (- v)
                    (runtime-error "Operand of '-' must be number.")))]
-        [(!) (falsy? (_eval (expr:unary-expr ast)))]
-        [(|(|) (_eval (expr:unary-expr ast))]))
+        [(!) (falsy? (evaluate (expr:unary-expr ast)))]
+        [(|(|) (evaluate (expr:unary-expr ast))]))
 
     (define/private (_and left right)
-      (let ([val (_eval left)])
+      (let ([val (evaluate left)])
         (if (truthy? val)
-            (_eval right)
+            (evaluate right)
             val)))
 
     (define/private (_or left right)
-      (let ([val (_eval left)])
+      (let ([val (evaluate left)])
         (if (falsy? val)
-            (_eval right)
+            (evaluate right)
             val)))
           
     (define/private (visit-binary ast)
@@ -54,7 +54,7 @@
         (cond [(eq? type 'and) (_and left right)]
               [(eq? type 'or)  (_or  left right)]
               [else
-               (let ([lval  (_eval left)] [rval  (_eval right)])
+               (let ([lval  (evaluate left)] [rval  (evaluate right)])
                  (case type
                    [(- * / < <= > >=)
                     (unless (and (number? lval) (number? rval))
@@ -70,7 +70,7 @@
         (with-handlers
             ([runtime-exn? (λ (e) (set! env prev) (raise e))])
           (for ([stmt (stmt:block-slist ast)])
-            (_eval stmt))
+            (evaluate stmt))
           (set! env prev))))
 
     (define/private (call/fn fn args)
@@ -110,8 +110,8 @@
           (apply (Native-fn callee) args)))
       
     (define/private (visit-call ast)
-      (let ([callee (_eval (expr:call-callee ast))]
-            [args   (for/list ([_ (expr:call-args ast)]) (_eval _))])
+      (let ([callee (evaluate (expr:call-callee ast))]
+            [args   (for/list ([_ (expr:call-args ast)]) (evaluate _))])
         (cond [(Function? callee) (call/fn callee args)]
               [(Class? callee) (call/init callee args)]
               [(Native? callee) (call/native callee args)]
@@ -123,7 +123,7 @@
         (struct-copy Function fn [env env])))
         
     (define/private (visit-get ast)
-      (let ([receiver (_eval (expr:get-receiver ast))]
+      (let ([receiver (evaluate (expr:get-receiver ast))]
             [field    (token-value (node-token ast))]
             [fn #f])
         (unless (Instance? receiver)
@@ -133,9 +133,9 @@
               [else (runtime-error (format "Undefined Property '~a'." field))])))
 
     (define/private (visit-set ast)
-      (let ([receiver (_eval (expr:set-receiver ast))]
+      (let ([receiver (evaluate (expr:set-receiver ast))]
             [field    (token-value (node-token ast))]
-            [value    (_eval (expr:set-expr ast))])
+            [value    (evaluate (expr:set-expr ast))])
         (unless (Instance? receiver)
           (runtime-error "Only instances have fields."))
         (instance-set receiver field value)
@@ -160,7 +160,7 @@
       (let ([lst #f])
         (set! lst
               (for/list ([e (expr:list-elements ast)])
-                (_eval e)))
+                (evaluate e)))
         (loxList lst (length lst))))
 
     (define/private (check-subscript target index)
@@ -172,15 +172,15 @@
         (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (loxList-length target)) index)))
 
     (define/private (visit-subscript ast)
-      (let ([target (_eval (expr:subscript-target ast))]
-            [index  (_eval (expr:subscript-index ast))])
+      (let ([target (evaluate (expr:subscript-target ast))]
+            [index  (evaluate (expr:subscript-index ast))])
         (check-subscript target index)
         (list-ref (loxList-elements target) index)))
 
     (define/private (visit-sub-set ast)
-      (let ([target (_eval (expr:sub-set-target ast))]
-            [index  (_eval (expr:sub-set-index ast))]
-            [value  (_eval (expr:sub-set-expr ast))])
+      (let ([target (evaluate (expr:sub-set-target ast))]
+            [index  (evaluate (expr:sub-set-index ast))]
+            [value  (evaluate (expr:sub-set-expr ast))])
         (check-subscript target index)
         (let ([v #f])
           (set! v (list->vector (loxList-elements target)))
@@ -190,19 +190,19 @@
 
     (define/private (visit-assign ast)
       (let ([name  (token-value (node-token ast))]
-            [value (_eval (expr:assign-expr ast))])
+            [value (evaluate (expr:assign-expr ast))])
         (send env assign name value)
         value))
 
     (define/private (visit-stmts ast)
       (for ([stmt (stmt:stmts-slist ast)])
-        (_eval stmt)))
+        (evaluate stmt)))
     
     (define/private (visit-var ast)
       (let ([name (token-value (node-token ast))]
             [init (stmt:var-init ast)])
         (unless (nil? init)
-          (set! init (_eval init)))
+          (set! init (evaluate init)))
         ;persitent environments [crafting interpreters/resolving-and-binding]
         (set! env (new env% [outer env]))
         (send env defvar name init)))
@@ -214,33 +214,33 @@
       (let ([condition (stmt:if-condition ast)]
             [if-arm (stmt:if-if-arm ast)]
             [then-arm (stmt:if-then-arm ast)])
-        (if (truthy? (_eval condition))
-            (_eval if-arm)
+        (if (truthy? (evaluate condition))
+            (evaluate if-arm)
             (when then-arm
-              (_eval then-arm)))))
+              (evaluate then-arm)))))
 
     (define/private (visit-while ast)
       (let ([condition (stmt:while-condition ast)]
             [body (stmt:while-body ast)])
         (with-handlers ([break-exn? (λ (e) nil)])
-          (while (truthy? (_eval condition))
-            (_eval body)))))
+          (while (truthy? (evaluate condition))
+            (evaluate body)))))
 
     (define/private (visit-for ast)
       (let ([init      (stmt:for-init ast)]
             [condition (stmt:for-condition ast)]
             [increment (stmt:for-increment ast)]
             [body      (stmt:for-body ast)])
-        (when init (_eval init))
+        (when init (evaluate init))
         (with-handlers ([break-exn? (λ (e) nil)])
           (cond [(eq? condition #f)
                  (while #t
-                   (_eval body)
-                   (when increment (_eval increment)))]
+                   (evaluate body)
+                   (when increment (evaluate increment)))]
                 [else 
-                 (while (truthy? (_eval condition))
-                   (_eval body)
-                   (when increment (_eval increment)))]))))
+                 (while (truthy? (evaluate condition))
+                   (evaluate body)
+                   (when increment (evaluate increment)))]))))
 
     (define/private (visit-anonymous-fun ast)
       (Function (expr:anonymous-fun-name ast)
@@ -292,13 +292,13 @@
         (when (~nil? exp)
           (if (initializer? cur-fun)
               (runtime-error "Cannot return a value from an initializer.")
-              (set! exp (_eval exp))))
+              (set! exp (evaluate exp))))
         (raise `(return ,exp))))
 
     (define/private (visit-break ast)
       (raise (break-exn)))
 
-    (define/public (_eval ast)
+    (define/public (evaluate ast)
       (cond [(expr:unary? ast)  (visit-unary ast)]
             [(expr:binary? ast) (visit-binary ast)]
             [(expr:call? ast)   (visit-call ast)]
@@ -312,7 +312,7 @@
             [(expr:sub-set? ast) (visit-sub-set ast)]
             [(expr:anonymous-fun? ast) (visit-anonymous-fun ast)]
             [(stmt:stmts? ast)  (visit-stmts ast)]
-            [(stmt:expr? ast)   (_eval (stmt:expr-expr ast))]
+            [(stmt:expr? ast)   (evaluate (stmt:expr-expr ast))]
             [(stmt:var? ast)    (visit-var ast)]
             [(stmt:block? ast)  (visit-block ast)]
             [(stmt:if? ast)     (visit-if ast)]

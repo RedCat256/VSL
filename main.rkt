@@ -39,7 +39,7 @@
 (define (interpret itr str)
   (with-handlers
       ([user-exn-catched? (λ (e) (print-user-error e))])
-    (send itr _eval (send (make-parser str) stmts))))
+    (send itr evaluate (send (make-parser str) stmts))))
 
 (define (main)
   (let ([itr (new interpreter%)]
