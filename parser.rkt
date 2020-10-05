@@ -19,8 +19,8 @@
     
     (define/private (peek-next)
       (if (>= (add1 pos) (length tokens))
-        nil
-        (list-ref tokens (add1 pos))))
+          nil
+          (list-ref tokens (add1 pos))))
 
     (define/private (peek)
       (if (>= pos (length tokens))

@@ -103,10 +103,10 @@
 
 (define (list-to-str lst)
   (string-join (for/list ([i lst])
-                  (tostr i))
-                ", "
-                #:before-first "["
-                #:after-last "]"))
+                 (tostr i))
+               ", "
+               #:before-first "["
+               #:after-last "]"))
 
 (define (tostr val)
   (cond [(string? val) val]

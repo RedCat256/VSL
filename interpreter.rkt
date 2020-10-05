@@ -5,9 +5,8 @@
 
 (provide interpreter%)
 
-(define runtime-natives (list
-                         system-natives
-                         ))
+(define runtime-natives
+  (list system-natives))
 
 (define interpreter%
   (class object%
@@ -239,11 +238,11 @@
 
     (define/private (visit-anonymous-fun ast)
       (Function (expr:anonymous-fun-name ast)
-                   (expr:anonymous-fun-parameters ast)
-                   (expr:anonymous-fun-body ast)
-                   env
-                   'anonymous
-                  nil))
+                (expr:anonymous-fun-parameters ast)
+                (expr:anonymous-fun-body ast)
+                env
+                'anonymous
+                nil))
 
     (define/private (visit-fun ast)
       (let ([name (stmt:fun-name ast)]
@@ -293,29 +292,29 @@
       (raise (break-exn)))
 
     (define/public (evaluate ast)
-      (cond [(expr:unary? ast)  (visit-unary ast)]
-            [(expr:binary? ast) (visit-binary ast)]
-            [(expr:call? ast)   (visit-call ast)]
-            [(expr:assign? ast) (visit-assign ast)]
-            [(expr:get? ast)    (visit-get ast)]
-            [(expr:set? ast)    (visit-set ast)]
-            [(expr:this? ast)   (visit-this ast)]
-            [(expr:super? ast)  (visit-super ast)]
-            [(expr:list? ast)   (visit-list ast)]
-            [(expr:subscript? ast) (visit-subscript ast)]
-            [(expr:sub-set? ast) (visit-sub-set ast)]
+      (cond [(expr:unary? ast)         (visit-unary ast)]
+            [(expr:binary? ast)        (visit-binary ast)]
+            [(expr:call? ast)          (visit-call ast)]
+            [(expr:assign? ast)        (visit-assign ast)]
+            [(expr:get? ast)           (visit-get ast)]
+            [(expr:set? ast)           (visit-set ast)]
+            [(expr:this? ast)          (visit-this ast)]
+            [(expr:super? ast)         (visit-super ast)]
+            [(expr:list? ast)          (visit-list ast)]
+            [(expr:subscript? ast)     (visit-subscript ast)]
+            [(expr:sub-set? ast)       (visit-sub-set ast)]
             [(expr:anonymous-fun? ast) (visit-anonymous-fun ast)]
-            [(stmt:stmts? ast)  (visit-stmts ast)]
-            [(stmt:expr? ast)   (evaluate (stmt:expr-expr ast))]
-            [(stmt:var? ast)    (visit-var ast)]
-            [(stmt:block? ast)  (visit-block ast)]
-            [(stmt:if? ast)     (visit-if ast)]
-            [(stmt:while? ast)  (visit-while ast)]
-            [(stmt:for? ast)    (visit-for ast)]
-            [(stmt:fun? ast)    (visit-fun ast)]
-            [(stmt:return? ast) (visit-return ast)]
-            [(stmt:break? ast)  (visit-break ast)]
-            [(stmt:class? ast)  (visit-class ast)]
+            [(stmt:stmts? ast)         (visit-stmts ast)]
+            [(stmt:expr? ast)          (evaluate (stmt:expr-expr ast))]
+            [(stmt:var? ast)           (visit-var ast)]
+            [(stmt:block? ast)         (visit-block ast)]
+            [(stmt:if? ast)            (visit-if ast)]
+            [(stmt:while? ast)         (visit-while ast)]
+            [(stmt:for? ast)           (visit-for ast)]
+            [(stmt:fun? ast)           (visit-fun ast)]
+            [(stmt:return? ast)        (visit-return ast)]
+            [(stmt:break? ast)         (visit-break ast)]
+            [(stmt:class? ast)         (visit-class ast)]
             [else (case (empty-token-type ast)
                     [(number string) (token-value ast)]
                     [(true)  #t]

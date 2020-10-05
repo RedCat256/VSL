@@ -16,8 +16,8 @@
     (λ ()
       (let ([line (read-line)])
         (until (eq? line eof)
-          (set! str (string-append str line "\n"))
-          (set! line (read-line)))
+               (set! str (string-append str line "\n"))
+               (set! line (read-line)))
         str))))
 
 (define (repl-loop itr)
