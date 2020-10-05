@@ -7,7 +7,6 @@
 
 (define runtime-natives (list
                          system-natives
-                         ui-natives
                          ))
 
 (define interpreter%
