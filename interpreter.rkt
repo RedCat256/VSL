@@ -233,14 +233,9 @@
             [body      (stmt:for-body ast)])
         (when init (evaluate init))
         (with-handlers ([break-exn? (λ (e) nil)])
-          (cond [(eq? condition #f)
-                 (while #t
-                   (evaluate body)
-                   (when increment (evaluate increment)))]
-                [else 
-                 (while (truthy? (evaluate condition))
-                   (evaluate body)
-                   (when increment (evaluate increment)))]))))
+          (while (if condition (truthy? (evaluate condition)) #t)
+            (evaluate body)
+            (when increment (evaluate increment))))))
 
     (define/private (visit-anonymous-fun ast)
       (Function (expr:anonymous-fun-name ast)
