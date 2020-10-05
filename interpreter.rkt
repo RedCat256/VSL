@@ -101,7 +101,7 @@
         (cond [(hash-has-key? (Class-methods klass) 'init)
                (set! init (bind/this ins (hash-ref (Class-methods klass) 'init)))
                (call/fn init args)]
-              [(not (zero? (length args))) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
+              [(positive? (length args)) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
 
     (define/private (call/native callee args)
@@ -164,9 +164,9 @@
         (List lst (length lst))))
 
     (define/private (check-subscript target index)
-      (when (not (List? target))
+      (unless (List? target)
         (runtime-error "Can only apply '[' to a list"))
-      (when (not (and (exact? index) (integer? index)))
+      (unless (and (exact? index) (integer? index))
         (runtime-error "Subscript must be an integer."))
       (when (or (>= index (List-length target)) (negative? index))
         (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (List-length target)) index)))
