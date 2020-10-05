@@ -11,19 +11,16 @@
     (field [symtab (make-hash)])
 
     (define/public (defvar name value)
-      (when (and (~nil? outer) (contains? name))
+      (when (and (~nil? outer) (hash-has-key? symtab name))
         (runtime-error "Variable '~a' has already declared in this scope." name))
       (hash-set! symtab name value))
-
-    (define/public (contains? name)
-      (hash-has-key? symtab name))
 
     (define/private (_get name)
       (define cur this)
       (call/cc
        (λ (return)
          (while (~nil? cur)
-           (if (send cur contains? name)
+           (if (hash-has-key? (get-field symtab cur) name)
                (return cur)
                (set! cur (get-field outer cur))))
          (runtime-error "Undefined variable '~a'." name))))
