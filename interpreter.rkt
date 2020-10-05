@@ -89,17 +89,17 @@
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
           (visit-block (Function-body fn)))
         (when (initializer? fn)
-          (set! return-val (send env get "this")))
+          (set! return-val (send env get 'this)))
         (set! env last)
         (set! cur-fun prev-fun)
         return-val))
 
-    (define/private (call/init klass args)
+    (define/private (call/init cls args)
       (let* ([init #f]
-             [name (format "~a instance" (Class-name klass))]
-             [ins  (Instance name  klass (make-hash))])
-        (cond [(hash-has-key? (Class-methods klass) 'init)
-               (set! init (bind/this ins (hash-ref (Class-methods klass) 'init)))
+             [name (format "~a instance" (Class-name cls))]
+             [ins  (Instance name  cls (make-hash))])
+        (cond [(hash-has-key? (Class-methods cls) 'init)
+               (set! init (bind/this ins (hash-ref (Class-methods cls) 'init)))
                (call/fn init args)]
               [(positive? (length args)) (runtime-error "Expected ~a arguments but got ~a." 0 (length args))])
         ins))
@@ -119,7 +119,7 @@
 
     (define/private (bind/this ins fn)
       (let ([env (new env% [outer (Function-env fn)])])
-        (send env defvar "this" ins)
+        (send env defvar 'this ins)
         (struct-copy Function fn [env env])))
         
     (define/private (visit-get ast)
@@ -142,18 +142,18 @@
         value))
 
     (define/private (visit-this ast)
-      (send env get "this"))
+      (send env get 'this))
 
     (define/private (visit-super ast)
-      (let* ([m_name (token-value (node-token ast))]
-             [_this  (send env get "this")]
-             [super-class (Class-super-class (Function-klass cur-fun))])
+      (let* ([name (token-value (node-token ast))]
+             [this (send env get 'this)]
+             [super-class (Class-super-class (Function-cls cur-fun))])
         (when (nil? super-class)
           (runtime-error "Cannot use 'super' in a class without superclass."))
-        (let ([method (class-get super-class m_name)])
+        (let ([method (class-get super-class name)])
           (unless method
-            (runtime-error "Undefined property '~a'." m_name))
-          (set! method (bind/this _this method))
+            (runtime-error "Undefined property '~a'." name))
+          (set! method (bind/this this method))
           method)))
 
     (define/private (visit-list ast)
@@ -249,17 +249,17 @@
       (let ([name (stmt:fun-name ast)]
             [pars (stmt:fun-parameters ast)]
             [body (stmt:fun-body ast)]
-            [klass nil])
+            [cls nil])
         (when (~nil? cur-fun)
-          (set! klass (Function-klass cur-fun)))
-        (send env defvar name (Function name pars body env 'fun klass))))
+          (set! cls (Function-cls cur-fun)))
+        (send env defvar name (Function name pars body env 'fun cls))))
 
     (define/private (visit-class ast)
       (let ([name (token-value (node-token ast))]
             [methods (make-hash)]
             [super-class nil]
             [super-class-name nil]
-            [klass nil])
+            [cls nil])
         (unless (nil? (stmt:class-super-class ast))
           (set! super-class-name (token-value (stmt:class-super-class ast)))
           
@@ -270,17 +270,17 @@
           (unless (Class? super-class)
             (runtime-error "Superclass must be a class.")))
 
-        (set! klass (Class name super-class methods))
+        (set! cls (Class name super-class methods))
         ; create methods
         (for ([i (stmt:class-methods ast)])
-          (let* ([_name (stmt:fun-name i)]
+          (let* ([name_ (stmt:fun-name i)]
                  [pars (stmt:fun-parameters i)]
                  [body (stmt:fun-body i)]
-                 [fn   (Function _name pars body env 'method klass)])
-            (when (eq? _name 'init)
-              (set! fn (Function _name pars body env 'init klass)))
-            (hash-set! methods _name fn)))
-        (send env defvar name klass)))
+                 [fn   (Function name_ pars body env 'method cls)])
+            (when (eq? name_ 'init)
+              (set! fn (Function name_ pars body env 'init cls)))
+            (hash-set! methods name_ fn)))
+        (send env defvar name cls)))
 
     (define/private (visit-return ast)
       (let ([exp (stmt:return-expr ast)])

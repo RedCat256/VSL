@@ -40,10 +40,10 @@
 (struct stmt:break   node [])
 (struct stmt:class   node [super-class methods])
 
-(struct Function    [name parameters body env type klass])
+(struct Function    [name parameters body env type cls])
 (struct Native      [name arity fn])
 (struct Class       [name super-class methods])
-(struct Instance    [name klass fields])
+(struct Instance    [name cls fields])
 (struct List        [elements length] #:mutable)
 
 (struct lex-exn     exn:fail:user ())
@@ -143,16 +143,16 @@
   (hash-set! (Instance-fields obj) field value))
 
 (define (class-get obj field)
-  (let ([klass obj]
+  (let ([cls obj]
         [fn #f])
     (when (Instance? obj)
-      (set! klass (Instance-klass obj)))
+      (set! cls (Instance-cls obj)))
 
     (call/cc
      (λ (return)
-       (while (~nil? klass)
-         (set! fn (hash-ref (Class-methods klass) field #f))
+       (while (~nil? cls)
+         (set! fn (hash-ref (Class-methods cls) field #f))
          (when fn
            (return fn))
-         (set! klass (Class-super-class klass)))
+         (set! cls (Class-super-class cls)))
        #f))))
