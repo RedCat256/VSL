@@ -44,7 +44,7 @@
 (struct Native      [name arity fn])
 (struct Class       [name super-class methods])
 (struct Instance    [name klass fields])
-(struct loxList        [elements length] #:mutable)
+(struct List        [elements length] #:mutable)
 
 (struct lex-exn     exn:fail:user ())
 (struct parse-exn   exn:fail:user ())
@@ -110,7 +110,7 @@
         [(eq? #t val)  "true"]
         [(eq? #f val)  "false"]
         [(nil? val)    "nil"]
-        [(loxList? val) (list-to-str (loxList-elements val))]
+        [(List? val) (list-to-str (List-elements val))]
         [(Function? val) (format "<fn ~a>" (Function-name val))]
         [(Native? val)   (format "<fn ~a>" (Native-name val))]
         [(Instance? val) (Instance-name val)]

@@ -161,21 +161,21 @@
         (set! lst
               (for/list ([e (expr:list-elements ast)])
                 (evaluate e)))
-        (loxList lst (length lst))))
+        (List lst (length lst))))
 
     (define/private (check-subscript target index)
-      (when (not (loxList? target))
+      (when (not (List? target))
         (runtime-error "Can only apply '[' to a list"))
       (when (not (and (exact? index) (integer? index)))
         (runtime-error "Subscript must be an integer."))
-      (when (or (>= index (loxList-length target)) (negative? index))
-        (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (loxList-length target)) index)))
+      (when (or (>= index (List-length target)) (negative? index))
+        (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (List-length target)) index)))
 
     (define/private (visit-subscript ast)
       (let ([target (evaluate (expr:subscript-target ast))]
             [index  (evaluate (expr:subscript-index ast))])
         (check-subscript target index)
-        (list-ref (loxList-elements target) index)))
+        (list-ref (List-elements target) index)))
 
     (define/private (visit-sub-set ast)
       (let ([target (evaluate (expr:sub-set-target ast))]
@@ -183,9 +183,9 @@
             [value  (evaluate (expr:sub-set-expr ast))])
         (check-subscript target index)
         (let ([v #f])
-          (set! v (list->vector (loxList-elements target)))
+          (set! v (list->vector (List-elements target)))
           (vector-set! v index value)
-          (set-loxList-elements! target (vector->list v))
+          (set-List-elements! target (vector->list v))
           target)))
 
     (define/private (visit-assign ast)
