@@ -28,14 +28,14 @@
       (let ([p (assoc sym binary-ops)])
         (if p (second p) #f)))
 
-    (define/private (visit-unary a)
-      (case (empty-token-type (node-token a))
-        [(-) (let ([v (_eval (expr:unary-expr a))])
+    (define/private (visit-unary ast)
+      (case (empty-token-type (node-token ast))
+        [(-) (let ([v (_eval (expr:unary-expr ast))])
                (if (number? v)
                    (- v)
                    (runtime-error "Operand of '-' must be number.")))]
-        [(!) (falsy? (_eval (expr:unary-expr a)))]
-        [(|(|) (_eval (expr:unary-expr a))]))
+        [(!) (falsy? (_eval (expr:unary-expr ast)))]
+        [(|(|) (_eval (expr:unary-expr ast))]))
 
     (define/private (_and left right)
       (let ([val (_eval left)])
@@ -49,10 +49,10 @@
             (_eval right)
             val)))
           
-    (define/private (visit-binary a)
-      (let ([type  (empty-token-type (node-token a))]
-            [left  (expr:binary-left a)]
-            [right (expr:binary-right a)])
+    (define/private (visit-binary ast)
+      (let ([type  (empty-token-type (node-token ast))]
+            [left  (expr:binary-left ast)]
+            [right (expr:binary-right ast)])
         (cond [(eq? type 'and) (_and left right)]
               [(eq? type 'or)  (_or  left right)]
               [else
@@ -66,12 +66,12 @@
                    [(!=) (not (equal? lval rval))]
                    [(+)  (plus lval rval)]))])))
 
-    (define/private (visit-block a)
+    (define/private (visit-block ast)
       (let ([prev env])
         (set! env (new env% [outer env]))
         (with-handlers
             ([user-exn-catched? (λ (e) (set! env prev) (raise e))])
-          (for ([stmt (stmt:block-slist a)])
+          (for ([stmt (stmt:block-slist ast)])
             (_eval stmt))
           (set! env prev))))
 
@@ -111,9 +111,9 @@
           (runtime-error "Expected ~a arguments but got ~a." (Native-arity callee) (length args))
           (apply (Native-fn callee) args)))
       
-    (define/private (visit-call a)
-      (let ([callee (_eval (expr:call-callee a))]
-            [args   (for/list ([_ (expr:call-args a)]) (_eval _))])
+    (define/private (visit-call ast)
+      (let ([callee (_eval (expr:call-callee ast))]
+            [args   (for/list ([_ (expr:call-args ast)]) (_eval _))])
         (cond [(Function? callee) (call/fn callee args)]
               [(Class? callee) (call/new callee args)]
               [(Native? callee) (call/native callee args)]
@@ -124,9 +124,9 @@
         (send env defvar "this" ins)
         (struct-copy Function fn [env env])))
         
-    (define/private (visit-get a)
-      (let ([receiver (_eval (expr:get-receiver a))]
-            [field    (token-value (node-token a))]
+    (define/private (visit-get ast)
+      (let ([receiver (_eval (expr:get-receiver ast))]
+            [field    (token-value (node-token ast))]
             [fn #f])
         (unless (Instance? receiver)
           (runtime-error "Only instances have properties."))
@@ -134,20 +134,20 @@
               [(begin (set! fn (class-get receiver field)) fn) (bind/this receiver fn)]
               [else (runtime-error (format "Undefined Property '~a'." field))])))
 
-    (define/private (visit-set a)
-      (let ([receiver (_eval (expr:set-receiver a))]
-            [field    (token-value (node-token a))]
-            [value    (_eval (expr:set-expr a))])
+    (define/private (visit-set ast)
+      (let ([receiver (_eval (expr:set-receiver ast))]
+            [field    (token-value (node-token ast))]
+            [value    (_eval (expr:set-expr ast))])
         (unless (Instance? receiver)
           (runtime-error "Only instances have fields."))
         (instance-set receiver field value)
         value))
 
-    (define/private (visit-this a)
+    (define/private (visit-this ast)
       (send env get "this"))
 
-    (define/private (visit-super a)
-      (let* ([m_name (token-value (node-token a))]
+    (define/private (visit-super ast)
+      (let* ([m_name (token-value (node-token ast))]
              [_this  (send env get "this")]
              [super-class (Class-super-class (Function-klass cur-fun))])
         (when (nil? super-class)
@@ -158,10 +158,10 @@
           (set! method (bind/this _this method))
           method)))
 
-    (define/private (visit-list a)
+    (define/private (visit-list ast)
       (let ([lst #f])
         (set! lst
-              (for/list ([e (expr:list-elements a)])
+              (for/list ([e (expr:list-elements ast)])
                 (_eval e)))
         (loxList lst (length lst))))
 
@@ -173,16 +173,16 @@
       (when (or (>= index (loxList-length target)) (negative? index))
         (runtime-error "Index out of range, expect 0..~a, but got '~a'" (sub1 (loxList-length target)) index)))
 
-    (define/private (visit-subscript a)
-      (let ([target (_eval (expr:subscript-target a))]
-            [index  (_eval (expr:subscript-index a))])
+    (define/private (visit-subscript ast)
+      (let ([target (_eval (expr:subscript-target ast))]
+            [index  (_eval (expr:subscript-index ast))])
         (check-subscript target index)
         (list-ref (loxList-elements target) index)))
 
-    (define/private (visit-sub-set a)
-      (let ([target (_eval (expr:sub-set-target a))]
-            [index  (_eval (expr:sub-set-index a))]
-            [value  (_eval (expr:sub-set-expr a))])
+    (define/private (visit-sub-set ast)
+      (let ([target (_eval (expr:sub-set-target ast))]
+            [index  (_eval (expr:sub-set-index ast))]
+            [value  (_eval (expr:sub-set-expr ast))])
         (check-subscript target index)
         (let ([v #f])
           (set! v (list->vector (loxList-elements target)))
@@ -190,49 +190,49 @@
           (set-loxList-elements! target (vector->list v))
           target)))
 
-    (define/private (visit-assign a)
-      (let ([name  (token-value (node-token a))]
-            [value (_eval (expr:assign-expr a))])
+    (define/private (visit-assign ast)
+      (let ([name  (token-value (node-token ast))]
+            [value (_eval (expr:assign-expr ast))])
         (send env assign name value)
         value))
 
-    (define/private (visit-stmts a)
-      (for ([stmt (stmt:stmts-slist a)])
+    (define/private (visit-stmts ast)
+      (for ([stmt (stmt:stmts-slist ast)])
         (_eval stmt)))
     
-    (define/private (visit-var a)
-      (let ([name (token-value (node-token a))]
-            [init (stmt:var-init a)])
+    (define/private (visit-var ast)
+      (let ([name (token-value (node-token ast))]
+            [init (stmt:var-init ast)])
         (unless (nil? init)
           (set! init (_eval init)))
         ;persitent environments [crafting interpreters/resolving-and-binding]
         (set! env (new env% [outer env]))
         (send env defvar name init)))
 
-    (define/private (visit-id a)
-      (send env get (token-value a)))
+    (define/private (visit-id ast)
+      (send env get (token-value ast)))
 
-    (define/private (visit-if a)
-      (let ([condition (stmt:if-condition a)]
-            [if-arm (stmt:if-if-arm a)]
-            [then-arm (stmt:if-then-arm a)])
+    (define/private (visit-if ast)
+      (let ([condition (stmt:if-condition ast)]
+            [if-arm (stmt:if-if-arm ast)]
+            [then-arm (stmt:if-then-arm ast)])
         (if (truthy? (_eval condition))
             (_eval if-arm)
             (when then-arm
               (_eval then-arm)))))
 
-    (define/private (visit-while a)
-      (let ([condition (stmt:while-condition a)]
-            [body (stmt:while-body a)])
+    (define/private (visit-while ast)
+      (let ([condition (stmt:while-condition ast)]
+            [body (stmt:while-body ast)])
         (with-handlers ([break-exn? (λ (e) nil)])
           (while (truthy? (_eval condition))
             (_eval body)))))
 
-    (define/private (visit-for a)
-      (let ([init      (stmt:for-init a)]
-            [condition (stmt:for-condition a)]
-            [increment (stmt:for-increment a)]
-            [body      (stmt:for-body a)])
+    (define/private (visit-for ast)
+      (let ([init      (stmt:for-init ast)]
+            [condition (stmt:for-condition ast)]
+            [increment (stmt:for-increment ast)]
+            [body      (stmt:for-body ast)])
         (when init (_eval init))
         (with-handlers ([break-exn? (λ (e) nil)])
           (cond [(eq? condition #f)
@@ -244,31 +244,31 @@
                    (_eval body)
                    (when increment (_eval increment)))]))))
 
-    (define/private (visit-anonymous-fun a)
-      (Function (expr:anonymous-fun-name a)
-                   (expr:anonymous-fun-parameters a)
-                   (expr:anonymous-fun-body a)
+    (define/private (visit-anonymous-fun ast)
+      (Function (expr:anonymous-fun-name ast)
+                   (expr:anonymous-fun-parameters ast)
+                   (expr:anonymous-fun-body ast)
                    env
                    'anonymous
                   nil))
 
-    (define/private (visit-fun a)
-      (let ([name (stmt:fun-name a)]
-            [pars (stmt:fun-parameters a)]
-            [body (stmt:fun-body a)]
+    (define/private (visit-fun ast)
+      (let ([name (stmt:fun-name ast)]
+            [pars (stmt:fun-parameters ast)]
+            [body (stmt:fun-body ast)]
             [klass nil])
         (when (~nil? cur-fun)
           (set! klass (Function-klass cur-fun)))
         (send env defvar name (Function name pars body env 'fun klass))))
 
-    (define/private (visit-class a)
-      (let ([name (token-value (node-token a))]
+    (define/private (visit-class ast)
+      (let ([name (token-value (node-token ast))]
             [methods (make-hash)]
             [super-class nil]
             [super-class-name nil]
             [klass nil])
-        (unless (nil? (stmt:class-super-class a))
-          (set! super-class-name (token-value (stmt:class-super-class a)))
+        (unless (nil? (stmt:class-super-class ast))
+          (set! super-class-name (token-value (stmt:class-super-class ast)))
           
           (when (eq? name super-class-name)
             (runtime-error "A class cannot inherit from itself."))
@@ -279,7 +279,7 @@
 
         (set! klass (Class name super-class methods))
         ; create methods
-        (for ([i (stmt:class-methods a)])
+        (for ([i (stmt:class-methods ast)])
           (let* ([_name (stmt:fun-name i)]
                  [pars (stmt:fun-parameters i)]
                  [body (stmt:fun-body i)]
@@ -289,45 +289,45 @@
             (hash-set! methods _name fn)))
         (send env defvar name klass)))
 
-    (define/private (visit-return a)
-      (let ([exp (stmt:return-expr a)])
+    (define/private (visit-return ast)
+      (let ([exp (stmt:return-expr ast)])
         (when (~nil? exp)
           (if (initializer? cur-fun)
               (runtime-error "Cannot return a value from an initializer.")
               (set! exp (_eval exp))))
         (raise `(return ,exp))))
 
-    (define/private (visit-break a)
+    (define/private (visit-break ast)
       (raise (break-exn)))
 
-    (define/public (_eval a)
-      (cond [(expr:unary? a)  (visit-unary a)]
-            [(expr:binary? a) (visit-binary a)]
-            [(expr:call? a)   (visit-call a)]
-            [(expr:assign? a) (visit-assign a)]
-            [(expr:get? a)    (visit-get a)]
-            [(expr:set? a)    (visit-set a)]
-            [(expr:this? a)   (visit-this a)]
-            [(expr:super? a)  (visit-super a)]
-            [(expr:list? a)   (visit-list a)]
-            [(expr:subscript? a) (visit-subscript a)]
-            [(expr:sub-set? a) (visit-sub-set a)]
-            [(expr:anonymous-fun? a) (visit-anonymous-fun a)]
-            [(stmt:stmts? a)  (visit-stmts a)]
-            [(stmt:expr? a)   (_eval (stmt:expr-expr a))]
-            [(stmt:var? a)    (visit-var a)]
-            [(stmt:block? a)  (visit-block a)]
-            [(stmt:if? a)     (visit-if a)]
-            [(stmt:while? a)  (visit-while a)]
-            [(stmt:for? a)    (visit-for a)]
-            [(stmt:fun? a)    (visit-fun a)]
-            [(stmt:return? a) (visit-return a)]
-            [(stmt:break? a)  (visit-break a)]
-            [(stmt:class? a)  (visit-class a)]
-            [else (case (empty-token-type a)
-                    [(number string) (token-value a)]
+    (define/public (_eval ast)
+      (cond [(expr:unary? ast)  (visit-unary ast)]
+            [(expr:binary? ast) (visit-binary ast)]
+            [(expr:call? ast)   (visit-call ast)]
+            [(expr:assign? ast) (visit-assign ast)]
+            [(expr:get? ast)    (visit-get ast)]
+            [(expr:set? ast)    (visit-set ast)]
+            [(expr:this? ast)   (visit-this ast)]
+            [(expr:super? ast)  (visit-super ast)]
+            [(expr:list? ast)   (visit-list ast)]
+            [(expr:subscript? ast) (visit-subscript ast)]
+            [(expr:sub-set? ast) (visit-sub-set ast)]
+            [(expr:anonymous-fun? ast) (visit-anonymous-fun ast)]
+            [(stmt:stmts? ast)  (visit-stmts ast)]
+            [(stmt:expr? ast)   (_eval (stmt:expr-expr ast))]
+            [(stmt:var? ast)    (visit-var ast)]
+            [(stmt:block? ast)  (visit-block ast)]
+            [(stmt:if? ast)     (visit-if ast)]
+            [(stmt:while? ast)  (visit-while ast)]
+            [(stmt:for? ast)    (visit-for ast)]
+            [(stmt:fun? ast)    (visit-fun ast)]
+            [(stmt:return? ast) (visit-return ast)]
+            [(stmt:break? ast)  (visit-break ast)]
+            [(stmt:class? ast)  (visit-class ast)]
+            [else (case (empty-token-type ast)
+                    [(number string) (token-value ast)]
                     [(true)  #t]
                     [(false) #f]
                     [(nil)   nil]
-                    [(id)    (visit-id a)]
+                    [(id)    (visit-id ast)]
                     [else    (void)])]))))
