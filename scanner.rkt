@@ -57,7 +57,7 @@
       (and (char? c) (char-whitespace? c)))
 
     (define/private (make-string-token)
-      (while (not (set-member? (set eof #\") c))
+      (until (set-member? (set eof #\") c)
         (next))
       (when (eqv? c eof)
         (parse-error "Unterminated string."))
@@ -89,13 +89,13 @@
         (next)))
 
     (define/private (skip-comment)
-      (while (not (set-member? (set eof #\newline) c))
+      (until (set-member? (set eof #\newline) c)
         (next)))
 
     (define/public (get-tokens)
       (let ([tokens '()]
             [tok (tokenize)])
-        (while (not (eq? (empty-token-type tok) 'eof))
+        (until (eq? (empty-token-type tok) 'eof)
           (set! tokens (cons tok tokens))
           (set! tok (tokenize)))
         (set! tokens (cons tok tokens))

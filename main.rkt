@@ -15,7 +15,7 @@
   (with-input-from-file file
     (λ ()
       (let ([line (read-line)])
-        (while (not (eq? line eof))
+        (until (eq? line eof)
           (set! str (string-append str line "\n"))
           (set! line (read-line)))
         str))))

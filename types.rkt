@@ -58,6 +58,10 @@
        (when predicate e ...
          (loop))))))
 
+(define-syntax until
+  (syntax-rules ()
+    ((_ predicate e ...) (while (not predicate) e ...))))
+
 (define-syntax incf
   (syntax-rules ()
     ((_ x n) (set! x (+ x n)))
