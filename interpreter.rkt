@@ -74,7 +74,7 @@
           (set! env prev))))
 
     (define/private (call/fn fn args)
-      (let ([_env  (new env% [outer (Function-env fn)])]
+      (let ([env_  (new env% [outer (Function-env fn)])]
             [last  env]
             [arity (length (Function-parameters fn))]
             [return-val nil]
@@ -82,8 +82,8 @@
         (when (~= arity (length args))
           (runtime-error "Expected ~a arguments but got ~a." arity (length args)))
         (for ([i (Function-parameters fn)] [j args])
-          (send _env defvar i j))
-        (set! env _env)
+          (send env_ defvar i j))
+        (set! env env_)
         (set! cur-fun fn)
         (with-handlers
             ([return-exn? (λ (e) (set! return-val (cadr e)))])
