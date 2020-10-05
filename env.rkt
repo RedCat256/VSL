@@ -15,9 +15,6 @@
         (runtime-error "Variable '~a' has already declared in this scope." name))
       (hash-set! symtab name value))
 
-    (define/public (getvar name)
-      (hash-ref symtab name))
-
     (define/public (contains? name)
       (hash-has-key? symtab name))
 
@@ -37,4 +34,4 @@
           
     (define/public (get name)
       (let ([e (_get name)])
-        (send e getvar name)))))
+        (hash-ref (get-field symtab e) name)))))
