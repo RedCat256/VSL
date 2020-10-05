@@ -94,7 +94,7 @@
         (set! cur-fun prev-fun)
         return-val))
 
-    (define/private (call/new klass args)
+    (define/private (call/init klass args)
       (let* ([init #f]
              [name (format "~a instance" (Class-name klass))]
              [ins  (Instance name  klass (make-hash))])
@@ -113,7 +113,7 @@
       (let ([callee (_eval (expr:call-callee ast))]
             [args   (for/list ([_ (expr:call-args ast)]) (_eval _))])
         (cond [(Function? callee) (call/fn callee args)]
-              [(Class? callee) (call/new callee args)]
+              [(Class? callee) (call/init callee args)]
               [(Native? callee) (call/native callee args)]
               [else (runtime-error "Can only call functions and classes.")])))
 
