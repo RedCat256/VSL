@@ -2,7 +2,6 @@
 (require "types.rkt")
 (require "env.rkt")
 (require "runtime/system.rkt")
-(require "runtime/ui.rkt")
 
 (provide interpreter%)
 
