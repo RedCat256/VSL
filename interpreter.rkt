@@ -256,7 +256,6 @@
 
     (define/private (visit-class ast)
       (let ([name (token-value (node-token ast))]
-            [methods (make-hash)]
             [super-class nil]
             [super-class-name nil]
             [cls nil])
@@ -270,7 +269,7 @@
           (unless (Class? super-class)
             (runtime-error "Superclass must be a class.")))
 
-        (set! cls (Class name super-class methods))
+        (set! cls (Class name super-class (make-hash)))
         ; create methods
         (for ([i (stmt:class-methods ast)])
           (let* ([name_ (stmt:fun-name i)]
@@ -279,7 +278,7 @@
                  [fn   (Function name_ pars body env 'method cls)])
             (when (eq? name_ 'init)
               (set! fn (Function name_ pars body env 'init cls)))
-            (hash-set! methods name_ fn)))
+            (hash-set! (Class-methods cls) name_ fn)))
         (send env defvar name cls)))
 
     (define/private (visit-return ast)
