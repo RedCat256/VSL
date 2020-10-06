@@ -1,4 +1,5 @@
 #lang racket
+(require "util.rkt")
 
 (provide (all-defined-out))
 
@@ -51,25 +52,6 @@
 (struct runtime-exn exn:fail:user ())
 (struct break-exn   [])
 
-(define-syntax while
-  (syntax-rules ()
-    ((_ predicate e ...)
-     (let loop ()
-       (when predicate e ...
-         (loop))))))
-
-(define-syntax until
-  (syntax-rules ()
-    ((_ predicate e ...) (while (not predicate) e ...))))
-
-(define-syntax incf
-  (syntax-rules ()
-    ((_ x n) (set! x (+ x n)))
-    ((_ x) (incf x 1))))
-
-(define (divide a b)
-  (cond [(zero? b) (/ (exact->inexact a) (exact->inexact b))]
-        [else (/ a b)]))
 
 (define (plus a b)
   (cond [(and (number? a) (number? b)) (+ a b)]
@@ -81,13 +63,6 @@
 
 (define (falsy? a)
   (not (truthy? a)))
-
-(define (stringify a)
-  (let* ([s (number->string a)]
-         [n (string-length s)])
-    (if (and (> n 2) (string=? (substring s (- n 2) n) ".0"))
-        (substring s 0 (- n 2))
-        s)))
 
 (define (char-to-symbol c)
   (string->symbol (string c)))
@@ -101,13 +76,6 @@
 (define (~= a b)
   (not (= a b)))
 
-(define (list-to-str lst)
-  (string-join (for/list ([i lst])
-                 (tostr i))
-               ", "
-               #:before-first "["
-               #:after-last "]"))
-
 (define (tostr val)
   (cond [(string? val) val]
         [(number? val) (stringify (exact->inexact val))]
@@ -120,6 +88,14 @@
         [(Instance? val) (Instance-name val)]
         [(Class? val)    (Class-name val)]
         [else "Unknown data type"]))
+
+
+(define (list-to-str lst)
+  (string-join (for/list ([i lst])
+                 (tostr i))
+               ", "
+               #:before-first "["
+               #:after-last "]"))
 
 (define (mkerr exn)
   (λ x

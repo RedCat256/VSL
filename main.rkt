@@ -1,6 +1,7 @@
 #lang racket
 
 (require "types.rkt")
+(require "util.rkt")
 (require "scanner.rkt")
 (require "parser.rkt")
 (require "interpreter.rkt")

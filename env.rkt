@@ -1,5 +1,6 @@
 #lang racket
 (require "types.rkt")
+(require "util.rkt")
 
 (provide env%)
 
