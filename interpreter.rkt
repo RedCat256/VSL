@@ -11,6 +11,7 @@
 
 (define interpreter%
   (class object%
+    (init-field in-repl)
     (super-new)
 
     (define cur-fun nil) ; current activation record
@@ -195,8 +196,10 @@
         value))
 
     (define/private (visit-stmts ast)
-      (for ([stmt (stmt:stmts-slist ast)])
-        (evaluate stmt)))
+      (let ([r nil])
+        (for ([stmt (stmt:stmts-slist ast)])
+          (set! r (evaluate stmt)))
+        (when in-repl r)))
     
     (define/private (visit-var ast)
       (let ([name (token-value (node-token ast))]

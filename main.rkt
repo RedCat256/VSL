@@ -43,11 +43,13 @@
     (send itr evaluate (send (make-parser str) stmts))))
 
 (define (main)
-  (let ([itr (new interpreter%)]
+  (let ([itr nil]
         [file #f]
         [args (current-command-line-arguments)])
-    (when (> (vector-length args) 0)
-      (set! file (vector-ref args 0)))
+    (if (> (vector-length args) 0)
+      (begin (set! file (vector-ref args 0))
+             (set! itr (new interpreter% [in-repl #f])))
+      (set! itr (new interpreter% [in-repl #t])))
     (if file
         (interpret itr (read-file file))
         (begin (banner)
