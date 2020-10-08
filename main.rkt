@@ -26,7 +26,7 @@
     (cond [(eq? eof line) (newline)]
           [line (let ([val (interpret itr line)])
                   (unless (void? val)
-                    (println val)))
+                    (displayln val)))
                 (repl-loop itr)]
           [else (newline)])))
 

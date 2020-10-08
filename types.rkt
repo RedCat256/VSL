@@ -77,16 +77,17 @@
   (not (= a b)))
 
 (define (tostr val)
-  (cond [(string? val) val]
-        [(number? val) (stringify (exact->inexact val))]
-        [(eq? #t val)  "true"]
-        [(eq? #f val)  "false"]
+  (cond [(string? val) (format "\x1b[1;33m~a~a" val "\x1b[0m")]
+        [(number? val) (format "\x1b[1;34m~a~a" (stringify (exact->inexact val)) "\x1b[0m")]
+        [(eq? #t val)  "\x1b[1;35mtrue\x1b[0m"]
+        [(eq? #f val)  "\x1b[1;35mfalse\x1b[0m"]
         [(nil? val)    "nil"]
         [(List? val) (list-to-str (List-elements val))]
-        [(Function? val) (format "<fn ~a>" (Function-name val))]
-        [(Native? val)   (format "<fn ~a>" (Native-name val))]
-        [(Instance? val) (Instance-name val)]
-        [(Class? val)    (Class-name val)]
+        [(Function? val) (format "\x1b[36m<fn ~a>\x1b[0m" (Function-name val))]
+        [(Native? val)   (format "\x1b[36m<fn ~a>\x1b[0m" (Native-name val))]
+        [(Instance? val) (format "\x1b[37m~a~a" (Instance-name val) "\x1b[0m")]
+        [(Class? val)    (format "\x1b[37m~a~a" (Class-name val) "\x1b[0m")]
+        [(void? val) ""]
         [else "Unknown data type"]))
 
 
@@ -109,9 +110,9 @@
 
 (define (print-user-error exn)
   (let ([msg (exn-message exn)])
-    (cond [(lex-exn? exn)     (eprintf "LexError: ~a~n" msg)]
-          [(parse-exn? exn)   (eprintf "ParseError: ~a~n" msg)]
-          [(runtime-exn? exn) (eprintf "RuntimeError: ~a~n" msg)])))
+    (cond [(lex-exn? exn)     (eprintf "\x1b[1;31mLexError: ~a~n\x1b[0m" msg)]
+          [(parse-exn? exn)   (eprintf "\x1b[1;31mParseError: ~a~n\x1b[0m" msg)]
+          [(runtime-exn? exn) (eprintf "\x1b[1;31mRuntimeError: ~a~n\x1b[0m" msg)])))
 
 (define (instance-has? obj field)
   (hash-has-key? (Instance-fields obj) field))

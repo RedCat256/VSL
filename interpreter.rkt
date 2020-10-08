@@ -196,10 +196,10 @@
         value))
 
     (define/private (visit-stmts ast)
-      (let ([r nil])
+      (let ([r (void)])
         (for ([stmt (stmt:stmts-slist ast)])
           (set! r (evaluate stmt)))
-        (when in-repl r)))
+        (when in-repl (tostr r))))
     
     (define/private (visit-var ast)
       (let ([name (token-value (node-token ast))]
