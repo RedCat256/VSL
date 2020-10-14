@@ -113,7 +113,10 @@
     (define/private (call/native callee args)
       (if (~= (Native-arity callee) (length args))
           (runtime-error "Expected ~a arguments but got ~a." (Native-arity callee) (length args))
-          (apply (Native-fn callee) args)))
+          (let ([return-val (apply (Native-fn callee) args)])
+            (if (void? return-val)
+              nil
+              return-val))))
       
     (define/private (visit-call ast)
       (let ([callee (evaluate (expr:call-callee ast))]
@@ -201,7 +204,7 @@
         value))
 
     (define/private (visit-stmts ast)
-      (let ([r (void)])
+      (let ([r nil])
         (for ([stmt (stmt:stmts-slist ast)])
           (set! r (evaluate stmt)))
         (when in-repl (tostr r))))
