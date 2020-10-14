@@ -1,5 +1,12 @@
 # VSL
-Very Simple Language
+Very Simple/Slow Language
+
+A toy programing language for fun!
+
+Simple: Lack of libraries.
+
+Slow: A tree walking interpreter implemented in Racket.
+
 
 Reference: [crafting interpreters](https://craftinginterpreters.com/)
 
