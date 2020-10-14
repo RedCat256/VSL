@@ -17,7 +17,25 @@
            [inClass #f]   ; in/out class
            [loop-depth 0] ; outside loop
            [had-error #f]
+           [scopes (list (make-hash))]
            )
+
+    (define/private (enter-scope)
+      (set! scopes (cons (make-hash) scopes)))
+
+    (define/private (exit-scope)
+      (set! scopes (cdr scopes)))
+
+    (define/private (peek-scope)
+      (if (null? scopes)
+          nil
+          (car scopes)))
+
+    (define/private (resolve name)
+      (let loop ([i 0] [s scopes])
+        (cond [(null? s) -1]
+              [(hash-has-key? (car s) name) i]
+              [else (loop (add1 i) (cdr s))])))
     
     (define/private (peek-next)
       (if (>= (add1 pos) (length tokens))
@@ -96,12 +114,18 @@
         (when (_match '=)
           (set! initializer (expr)))
         (consume '|;| "Expect ';' after variable declaration.")
+        (let ([scope (peek-scope)] [name (token-value id)])
+          (when (> (length scopes) 1)
+            (when (hash-has-key? scope name)
+              (parse-error "Variable '~a' has already declared in this scope." name)))
+          (hash-set! (peek-scope) name #t))
         (stmt:var id initializer)))
 
     (define/private (_fun kind)
       (let-values ([(tok name plist body) (values prev "anonymous" '() #f)])
       
         (incf depth) ; enter function/method
+        (enter-scope)
 
         (unless (check '|(|)
           (consume 'id (format "Expect ~a name." kind))
@@ -111,16 +135,19 @@
         (while (and (~check '|)|) (not-at-end?))
           (consume 'id "Expect variable for arguments.")
           (set! plist (cons (token-value prev) plist))
+          (hash-set! (peek-scope) (token-value prev) #t)
           (unless (check '|)|)
             (consume '|,| "Expect ',' or ')' after parameter.")))
         (when (eq? (empty-token-type prev) '|,|)
           (parse-error "Expect parameter name after ','."))
         (set! plist (reverse plist))
+
         (consume '|)| "Expect ')' after parameters.")
         (consume '|{| (format "Expect '{' before ~a body." kind))
         (set! body (block-stmt))
       
         (incf depth -1) ; exit function/method
+        (exit-scope)
 
         (list tok name plist body)))
 
@@ -162,9 +189,11 @@
     (define/private (block-stmt)
       (let ([sts '()]
             [tok prev])
+        (enter-scope)
         (while (and (~check '|}|) (not-at-end?))
           (set! sts (cons (declaration) sts)))
         (consume '|}| "Expect '}' after block.")
+        (exit-scope)
         (stmt:block tok (reverse sts))))
 
     (define/private (if-stmt)
@@ -239,7 +268,8 @@
       (let ([type (empty-token-type cur)])
         (case type
           [(- !) (next) (expr:unary prev (parse-prec 120))]
-          [(number id string true false nil) (next) prev]
+          [(number string true false nil) (next) prev]
+          [(id) (next) (expr:id prev (resolve (token-value prev)))]
           [(|(|) (next) (begin0 (expr:unary prev (expr)) (consume '|)| "Expect ')' for grouping"))]
           [(|[|) (next) (parse-list)]
           [(this)  (cond [inClass (next) (expr:this prev)]
@@ -276,7 +306,7 @@
       (let ([val (parse-prec (sub1 (get-prec prev)))])
         (cond [(expr:get? target) (expr:set (node-token target) (expr:get-receiver target) val)]
               [(expr:subscript? target) (expr:sub-set nil (expr:subscript-target target) (expr:subscript-index target) val)]
-              [(and (token? target) (eq? (empty-token-type target) 'id)) (expr:assign target val)]
+              [(expr:id? target) (expr:assign target val)]
               [else (parse-error "Invalid assignment target.")])))
 
     (define/private (binary left)

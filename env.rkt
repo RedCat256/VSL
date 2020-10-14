@@ -12,8 +12,8 @@
     (field [symtab (make-hash)])
 
     (define/public (defvar name value)
-      (when (and (~nil? outer) (hash-has-key? symtab name))
-        (runtime-error "Variable '~a' has already declared in this scope." name))
+      ;(when (and (~nil? outer) (hash-has-key? symtab name))
+      ;  (runtime-error "Variable '~a' has already declared in this scope." name))
       (hash-set! symtab name value))
 
     (define/private (_get name)
@@ -29,6 +29,13 @@
     (define/public (assign name value)
       (let ([e (_get name)])
         (hash-set! (get-field symtab e) name value)))
+
+    (define/public (ancestor depth)
+      (let ([r this])
+        (while (> depth 0)
+          (set! r (get-field outer r))
+          (incf depth -1))
+        r))
           
     (define/public (get name)
       (let ([e (_get name)])

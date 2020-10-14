@@ -113,10 +113,7 @@
     (define/private (call/native callee args)
       (if (~= (Native-arity callee) (length args))
           (runtime-error "Expected ~a arguments but got ~a." (Native-arity callee) (length args))
-          (let ([return-val (apply (Native-fn callee) args)])
-            (if (void? return-val)
-              nil
-              return-val))))
+          (apply (Native-fn callee) args)))
       
     (define/private (visit-call ast)
       (let ([callee (evaluate (expr:call-callee ast))]
@@ -198,16 +195,18 @@
           target)))
 
     (define/private (visit-assign ast)
-      (let ([name  (token-value (node-token ast))]
+      (let ([name  (token-value (node-token (node-token ast)))]
+            [depth (expr:id-depth (node-token ast))]
             [value (evaluate (expr:assign-expr ast))])
-        (send env assign name value)
+        (send (send env ancestor depth) defvar name value)
+        ;(send env assign name value)
         value))
 
     (define/private (visit-stmts ast)
-      (let ([r nil])
+      (let ([r (void)])
         (for ([stmt (stmt:stmts-slist ast)])
           (set! r (evaluate stmt)))
-        (when in-repl (tostr r))))
+        (when in-repl (unless (void? r) (tostr r)))))
     
     (define/private (visit-var ast)
       (let ([name (token-value (node-token ast))]
@@ -215,12 +214,12 @@
         (unless (nil? init)
           (set! init (evaluate init)))
         ;persitent environments [crafting interpreters/resolving-and-binding]
-        (set! env (new env% [outer env]))
-        (send env defvar name init)
-        nil))
+        ;(set! env (new env% [outer env]))
+        (send env defvar name init)))
 
     (define/private (visit-id ast)
-      (send env get (token-value ast)))
+      (let ([depth (expr:id-depth ast)])
+        (send (send env ancestor depth) get (token-value (node-token ast)))))
 
     (define/private (visit-if ast)
       (let ([test (stmt:if-test ast)]
@@ -305,7 +304,8 @@
       (raise (break-exn)))
 
     (define/public (evaluate ast)
-      (cond [(expr:unary? ast)         (visit-unary ast)]
+      (cond [(expr:id? ast)            (visit-id ast)]
+            [(expr:unary? ast)         (visit-unary ast)]
             [(expr:binary? ast)        (visit-binary ast)]
             [(expr:call? ast)          (visit-call ast)]
             [(expr:assign? ast)        (visit-assign ast)]
@@ -333,5 +333,4 @@
                     [(true)  #t]
                     [(false) #f]
                     [(nil)   nil]
-                    [(id)    (visit-id ast)]
                     [else    (void)])]))))

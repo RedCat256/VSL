@@ -16,6 +16,7 @@
 
 (struct node [token])
 
+(struct expr:id      node [depth])
 (struct expr:unary   node [expr])
 (struct expr:binary  node [left right])
 (struct expr:assign  node [expr])
