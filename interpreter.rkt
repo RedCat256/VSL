@@ -199,7 +199,6 @@
             [depth (expr:id-depth (node-token ast))]
             [value (evaluate (expr:assign-expr ast))])
         (send (send env ancestor depth) defvar name value)
-        ;(send env assign name value)
         value))
 
     (define/private (visit-stmts ast)
