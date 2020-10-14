@@ -11,6 +11,10 @@ Slow: A tree walking interpreter implemented in Racket.
 Reference: [crafting interpreters](https://craftinginterpreters.com/)
 
 Example
+
+
+Closure
+------
 ```cpp
 fun addn(x) {
   return fun (y) {
@@ -20,7 +24,11 @@ fun addn(x) {
 
 var addSix = addn(6);
 print(addSix(3)); // 9
+```
 
+Class
+------
+```cpp
 class Dog {
   init(name, color) {
     this.name = name;
@@ -43,3 +51,13 @@ dog.bark(3); // bark!\nbark!\nbark!\n
 dog.tostr(); // Putty\n3\n
 
 ```
+
+List
+------
+```cpp
+var lst = [1,2,3, "hello"];
+for (var i = 0; i < 4; i = i+1)
+  print(lst[i]);              // 1\n2\n3\nhello\n
+```
+
+
