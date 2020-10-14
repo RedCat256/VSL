@@ -34,13 +34,20 @@
   (printf "[VSL]~n"))
 
 (define (make-parser str)
-  (let ([sc (new scanner% [chars str])])
-    (new parser% [tokens (send sc get-tokens)])))
+  (let* ([sc (new scanner% [chars str])]
+         [toks (send sc get-tokens)]
+         [parser (new parser% [tokens toks])])
+        (when (get-field had-error sc)
+          (set-field! had-error parser #t))
+        parser))
 
 (define (interpret itr str)
   (with-handlers
-      ([user-exn-catched? (λ (e) (print-user-error e))])
-    (send itr evaluate (send (make-parser str) stmts))))
+      ([runtime-exn? (λ (e) (eprintf "\x1b[1;31mRuntimeError: ~a~n\x1b[0m" (exn-message e)))])
+    (let* ([parser (make-parser str)]
+           [ast (send parser stmts)])
+        (unless (get-field had-error parser)
+          (send itr evaluate ast)))))
 
 (define (main)
   (let ([itr nil]

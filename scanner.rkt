@@ -9,6 +9,8 @@
     (init-field chars)
     (super-new)
     
+    (field [had-error #f])
+
     (define pos 0)
     (define start 0)
     (define line 1)
@@ -61,7 +63,7 @@
       (until (set-member? (set eof #\") c)
              (next))
       (when (eqv? c eof)
-        (parse-error "Unterminated string."))
+        (eprintf "\x1b[1;31mLexError: Unterminated string.\x1b[0m"))
       (next) ; skip right "
       (token 'string line (substring chars (add1 start) (sub1 pos))))
 
@@ -119,4 +121,4 @@
                [(/) (next)
                     (cond [(_match #\/) (skip-comment) (tokenize)]
                           [else (empty-token '/ line)])]
-               [else (lex-error "Invalid character '~a'" c)])]))))
+               [else (set! had-error #t) (eprintf "\x1b[1;31mLexError: Invalid character '~a'~n\x1b[0m" c) (next) (tokenize)])]))))

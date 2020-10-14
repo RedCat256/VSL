@@ -27,6 +27,11 @@
       (let ([p (assoc sym binary-ops)])
         (if p (second p) #f)))
 
+    (define/private (plus a b)
+      (cond [(and (number? a) (number? b)) (+ a b)]
+            [(and (string? a) (string? b)) (string-append a b)]
+            [else (runtime-error "Operands of '+' must be two numbers or two strings.")]))
+
     (define/private (visit-unary ast)
       (case (empty-token-type (node-token ast))
         [(-) (let ([v (evaluate (expr:unary-expr ast))])

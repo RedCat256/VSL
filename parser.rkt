@@ -16,16 +16,17 @@
            [depth 0]      ; 0 represents top level
            [inClass #f]   ; in/out class
            [loop-depth 0] ; outside loop
+           [had-error #f]
            )
     
     (define/private (peek-next)
       (if (>= (add1 pos) (length tokens))
-          nil
+          (last tokens)
           (list-ref tokens (add1 pos))))
 
     (define/private (peek)
       (if (>= pos (length tokens))
-          nil
+          (last tokens)
           (list-ref tokens pos)))
 
     (define/private (next)
@@ -69,6 +70,11 @@
            (case (empty-token-type cur)
              [(class fun var for if while return) (return nil)])
            (next)))))
+
+    (define/private (parse-error . args)
+      (set! had-error #t)
+      (eprintf "\x1b[1;31mParseError: ~a~n\x1b[0m" (apply format args))
+      (synchronize))
 
     (define/public (stmts)
       (let ([sts '()]

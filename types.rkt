@@ -47,16 +47,12 @@
 (struct Instance    [name cls fields])
 (struct List        [elements length] #:mutable)
 
-(struct lex-exn     exn:fail:user ())
-(struct parse-exn   exn:fail:user ())
 (struct runtime-exn exn:fail:user ())
 (struct break-exn   [])
 
+(define (runtime-error . args)
+  (raise (runtime-exn (apply format args) (current-continuation-marks))))
 
-(define (plus a b)
-  (cond [(and (number? a) (number? b)) (+ a b)]
-        [(and (string? a) (string? b)) (string-append a b)]
-        [else (runtime-error "Operands of '+' must be two numbers or two strings.")]))
 
 (define (truthy? a)
   (and (~nil? a) a))
@@ -90,29 +86,12 @@
         [(void? val) ""]
         [else "Unknown data type"]))
 
-
 (define (list-to-str lst)
   (string-join (for/list ([i lst])
                  (tostr i))
                ", "
                #:before-first "["
                #:after-last "]"))
-
-(define (mkerr exn)
-  (λ x
-    (raise (exn (apply format x) (current-continuation-marks)))))
-
-(define-values (lex-error parse-error runtime-error)
-  (values (mkerr lex-exn) (mkerr parse-exn) (mkerr runtime-exn)))
-
-(define (user-exn-catched? exn)
-  (or (lex-exn? exn) (parse-exn? exn) (runtime-exn? exn)))
-
-(define (print-user-error exn)
-  (let ([msg (exn-message exn)])
-    (cond [(lex-exn? exn)     (eprintf "\x1b[1;31mLexError: ~a~n\x1b[0m" msg)]
-          [(parse-exn? exn)   (eprintf "\x1b[1;31mParseError: ~a~n\x1b[0m" msg)]
-          [(runtime-exn? exn) (eprintf "\x1b[1;31mRuntimeError: ~a~n\x1b[0m" msg)])))
 
 (define (instance-has? obj field)
   (hash-has-key? (Instance-fields obj) field))
