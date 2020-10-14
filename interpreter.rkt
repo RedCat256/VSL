@@ -216,7 +216,8 @@
           (set! init (evaluate init)))
         ;persitent environments [crafting interpreters/resolving-and-binding]
         (set! env (new env% [outer env]))
-        (send env defvar name init)))
+        (send env defvar name init)
+        nil))
 
     (define/private (visit-id ast)
       (send env get (token-value ast)))
