@@ -214,29 +214,29 @@
       (send env get (token-value ast)))
 
     (define/private (visit-if ast)
-      (let ([condition (stmt:if-condition ast)]
+      (let ([test (stmt:if-test ast)]
             [if-arm (stmt:if-if-arm ast)]
             [then-arm (stmt:if-then-arm ast)])
-        (if (truthy? (evaluate condition))
+        (if (truthy? (evaluate test))
             (evaluate if-arm)
             (when then-arm
               (evaluate then-arm)))))
 
     (define/private (visit-while ast)
-      (let ([condition (stmt:while-condition ast)]
+      (let ([test (stmt:while-test ast)]
             [body (stmt:while-body ast)])
         (with-handlers ([break-exn? (λ (e) nil)])
-          (while (truthy? (evaluate condition))
+          (while (truthy? (evaluate test))
             (evaluate body)))))
 
     (define/private (visit-for ast)
       (let ([init      (stmt:for-init ast)]
-            [condition (stmt:for-condition ast)]
+            [test (stmt:for-test ast)]
             [increment (stmt:for-increment ast)]
             [body      (stmt:for-body ast)])
         (when init (evaluate init))
         (with-handlers ([break-exn? (λ (e) nil)])
-          (while (if condition (truthy? (evaluate condition)) #t)
+          (while (if test (truthy? (evaluate test)) #t)
             (evaluate body)
             (when increment (evaluate increment))))))
 
